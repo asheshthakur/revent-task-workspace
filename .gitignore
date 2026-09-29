@@ -30,8 +30,20 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
+!.env.example
+
+# cloudflare / open-next
+/.open-next/
+/.wrangler/
+
+# local database files
+/data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
 
 # vercel
 .vercel

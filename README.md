@@ -1,36 +1,107 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# REVENT Task Workspace
 
-## Getting Started
+**REVENT Task Workspace** is an internal employee task, finance, and work management platform engineered for distributed teams.
 
-First, run the development server:
+- **Live Production URL**: [https://revent-task-workspace.revent-workspace.workers.dev/](https://revent-task-workspace.revent-workspace.workers.dev/)
+- **Hosting & Infrastructure**: Cloudflare Workers + Cloudflare D1 (Zero Mandatory Monthly Cost architecture, serverless edge with zero cold-start spin-down).
 
+---
+
+## Architecture & Technology Stack
+
+- **Frontend Framework**: Next.js 15 (App Router, React 19)
+- **Styling**: Tailwind CSS v4, Lucide React Icons
+- **Edge Server Runtime**: Cloudflare Workers (`workerd` runtime) via `@opennextjs/cloudflare`
+- **Database**: Cloudflare D1 (Serverless edge SQLite in production) with local SQLite fallback for dev
+- **Authentication**: Stateless HMAC-SHA256 JWT sessions (`jose`), secure HTTP-only cookies, password hashing with `bcryptjs`
+- **Real-Time Presence**: Edge heartbeat mechanism tracking active sessions without paid third-party services
+- **Multi-Tenant SaaS**: Complete workspace isolation via `organisations`, `organisation_members`, and role-based permissions (`owner`, `admin`, `member`)
+- **Key Modules**:
+  - **Task Management**: Hierarchical priority ranking, multiple lifecycle stages (*Not Started*, *Started*, *Half-way*, *Completed*), *My Tasks* & *Assigned by Me* views, deadline tracking, work links, and audit history.
+  - **Internal Chat**: 1-to-1 direct messaging, group chat, and task-linked discussions with unread badges.
+  - **Finance & Invoicing**: Client ledger, invoice generation, PDC (Post-Dated Cheque) tracking, payment receipts, and document management.
+  - **Audit Logs & Analytics**: Organizational and employee-level productivity and audit trail logs.
+
+---
+
+## Getting Started (Local Development)
+
+### 1. Prerequisites
+- Node.js 20+
+- npm or equivalent
+
+### 2. Installation
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Environment Configuration
+Copy `.env.example` to `.env.local` if needed:
+```bash
+cp .env.example .env.local
+```
+> **Security Notice**: Never commit `.env*` or secret keys to version control. Production secrets are managed securely via Cloudflare Workers / Wrangler secrets.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Running the Development Server
+```bash
+# Standard Next.js development server
+npm run dev
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Or to run the local preview server on port 3005:
+npm run start -- -p 3005
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Build & Test Commands
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Type Check**:
+  ```bash
+  npx tsc --noEmit
+  ```
+- **Next.js Production Build**:
+  ```bash
+  npm run build
+  ```
+- **Cloudflare Edge Bundle Build (OpenNext)**:
+  ```bash
+  npx @opennextjs/cloudflare build
+  ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Production Deployment Process
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The live production application runs on Cloudflare Workers edge runtime backed by Cloudflare D1.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Verify Wrangler Authentication**:
+   ```bash
+   npx wrangler whoami
+   ```
+2. **Compile Cloudflare Bundle**:
+   ```bash
+   npx @opennextjs/cloudflare build
+   ```
+3. **Deploy to Cloudflare Workers**:
+   ```bash
+   npx wrangler deploy
+   ```
+
+*Note: Pushing code to GitHub does not trigger automatic deployment unless a GitHub Actions / Cloudflare Pages CI/CD pipeline is explicitly connected.*
+
+---
+
+## Database & Schema Management
+
+- D1 schema definitions and migration scripts are located in `d1/` and `scratch/`.
+- Local development stores database state in `data/revent_tasks.db` (gitignored).
+- Cloudflare D1 migrations can be applied remotely via:
+  ```bash
+  npx wrangler d1 execute revent-production-db --file=./d1/schema.sql
+  ```
+
+---
+
+## License
+
+Proprietary — Internal usage for REVENT.
