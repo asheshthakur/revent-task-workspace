@@ -175,7 +175,43 @@ export async function PATCH(
       }
     }
 
-    // 2. Admin Reassignment & Full Edit
+    // 2. Drive / Work Link update (Assignee, Assigner, or Admin)
+    if (body.drive_link !== undefined) {
+      const canUpdateLink = activeOrg.is_admin || task.assigned_to === user.id || task.created_by === user.id;
+      if (!canUpdateLink) {
+        return NextResponse.json({ error: 'Forbidden: You cannot update the work link for this task' }, { status: 403 });
+      }
+
+      const trimmedLink = typeof body.drive_link === 'string' ? body.drive_link.trim() : '';
+      if (trimmedLink) {
+        try {
+          const parsed = new URL(trimmedLink);
+          if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            return NextResponse.json({ error: 'Work link must start with http:// or https://' }, { status: 400 });
+          }
+        } catch {
+          return NextResponse.json({ error: 'Invalid URL for work link' }, { status: 400 });
+        }
+      }
+
+      if (trimmedLink !== (task.drive_link || '')) {
+        updates.push('drive_link = ?');
+        values.push(trimmedLink);
+
+        await logAuditAction({
+          organisationId: activeOrg.id,
+          userId: user.id,
+          actionType: 'Work Link Updated',
+          entityType: 'Task',
+          entityId: taskId,
+          entityTitle: task.task_name,
+          oldValue: task.drive_link || 'None',
+          newValue: trimmedLink || 'None',
+        });
+      }
+    }
+
+    // 3. Admin Reassignment & Full Edit
     if (activeOrg.is_admin) {
       if (body.assigned_to !== undefined && body.assigned_to !== task.assigned_to) {
         // Verify target employee belongs to active organisation
@@ -259,21 +295,6 @@ export async function PATCH(
             newValue: body.priority,
           });
         }
-      }
-
-      if (body.drive_link !== undefined) {
-        if (body.drive_link && body.drive_link.trim()) {
-          try {
-            const parsed = new URL(body.drive_link.trim());
-            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-              return NextResponse.json({ error: 'Work link must start with http:// or https://' }, { status: 400 });
-            }
-          } catch {
-            return NextResponse.json({ error: 'Invalid URL for work link' }, { status: 400 });
-          }
-        }
-        updates.push('drive_link = ?');
-        values.push(body.drive_link ? body.drive_link.trim() : '');
       }
 
       if (body.due_date !== undefined) {

@@ -687,6 +687,10 @@ export default function DashboardPage() {
           setIsFormOpen(true);
         }}
         onArchiveTask={handleArchiveTask}
+        onTaskUpdated={(updated) => {
+          setSelectedTask(updated);
+          setTasks((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
+        }}
       />
 
       {/* Task Form Modal (Create / Edit) */}

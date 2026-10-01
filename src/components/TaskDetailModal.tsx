@@ -17,6 +17,7 @@ import {
   ArrowRight,
   MessageSquare,
   DollarSign,
+  Link2,
 } from 'lucide-react';
 import { PriorityBadge } from './PriorityBadge';
 import { StatusBadge } from './StatusBadge';
@@ -85,6 +86,7 @@ interface TaskDetailModalProps {
   onStatusChange: (taskId: number, newStatus: StatusType) => Promise<void>;
   onEditTask?: (task: Task) => void;
   onArchiveTask?: (taskId: number) => Promise<void>;
+  onTaskUpdated?: (updatedTask: Task) => void;
 }
 
 export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
@@ -95,11 +97,20 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   onStatusChange,
   onEditTask,
   onArchiveTask,
+  onTaskUpdated,
 }) => {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [statusError, setStatusError] = useState('');
   const [activeTab, setActiveTab] = useState<'details' | 'history' | 'discussion'>('details');
   const [discussionUnread, setDiscussionUnread] = useState(0);
+
+  // Work Link editing states
+  const [localWorkLink, setLocalWorkLink] = useState('');
+  const [isEditingLink, setIsEditingLink] = useState(false);
+  const [linkInput, setLinkInput] = useState('');
+  const [isSavingLink, setIsSavingLink] = useState(false);
+  const [linkError, setLinkError] = useState('');
+  const [linkSuccess, setLinkSuccess] = useState(false);
 
   const [assignmentHistory, setAssignmentHistory] = useState<AssignmentHistoryItem[]>([]);
   const [statusHistory, setStatusHistory] = useState<StatusHistoryItem[]>([]);
@@ -109,6 +120,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   useEffect(() => {
     if (!isOpen || !task) return;
     setActiveTab('details');
+    setLocalWorkLink(task.drive_link || '');
+    setLinkInput(task.drive_link || '');
+    setIsEditingLink(false);
+    setLinkError('');
+    setLinkSuccess(false);
 
     const fetchHistory = async () => {
       try {
@@ -164,6 +180,63 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       setIsUpdatingStatus(false);
     }
   };
+
+  const handleSaveWorkLink = async () => {
+    setLinkError('');
+    setLinkSuccess(false);
+
+    const trimmed = linkInput.trim();
+    if (trimmed) {
+      try {
+        const parsed = new URL(trimmed);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          setLinkError('Work link must start with http:// or https://');
+          return;
+        }
+      } catch {
+        setLinkError('Please enter a valid URL (e.g. https://drive.google.com/...)');
+        return;
+      }
+    }
+
+    try {
+      setIsSavingLink(true);
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ drive_link: trimmed }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update work link');
+      }
+
+      setLocalWorkLink(trimmed);
+      task.drive_link = trimmed;
+      if (data.task?.updated_at) {
+        task.updated_at = data.task.updated_at;
+      }
+
+      setIsEditingLink(false);
+      setLinkSuccess(true);
+      setTimeout(() => setLinkSuccess(false), 3000);
+
+      if (onTaskUpdated && data.task) {
+        onTaskUpdated(data.task);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save work link';
+      setLinkError(msg);
+    } finally {
+      setIsSavingLink(false);
+    }
+  };
+
+  const canEditWorkLink =
+    currentUser.role === 'admin' ||
+    task.assigned_to === currentUser.id ||
+    task.created_by === currentUser.id;
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return 'Not set';
@@ -303,32 +376,128 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   </div>
                 )}
 
-                {/* Work Link Callout */}
-                {task.drive_link ? (
-                  <div className="p-4 rounded-xl bg-indigo-50/80 border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                    <div className="space-y-0.5 overflow-hidden">
-                      <span className="text-xs font-semibold text-indigo-900 uppercase tracking-wider block">
-                        Associated Work / Drive Link
-                      </span>
-                      <span className="text-xs text-indigo-700 truncate block max-w-md font-mono">
-                        {task.drive_link}
+                {/* Work Link Section */}
+                <div className="p-4 rounded-xl bg-indigo-50/80 border border-indigo-100/90 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1.5">
+                      <Link2 className="w-4 h-4 text-indigo-600" />
+                      <span className="text-xs font-bold text-indigo-950 uppercase tracking-wider">
+                        Google Drive / Work Link
                       </span>
                     </div>
-                    <a
-                      href={task.drive_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-colors shrink-0"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Open Work ↗</span>
-                    </a>
+                    {canEditWorkLink && !isEditingLink && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLinkInput(localWorkLink);
+                          setIsEditingLink(true);
+                          setLinkError('');
+                        }}
+                        className="text-xs font-semibold text-indigo-700 hover:text-indigo-900 hover:underline flex items-center space-x-1 transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>{localWorkLink ? 'Edit Link' : 'Add Link'}</span>
+                      </button>
+                    )}
                   </div>
-                ) : (
-                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-500 italic">
-                    No Google Drive / work link provided for this task.
-                  </div>
-                )}
+
+                  {isEditingLink ? (
+                    <div className="space-y-2 pt-1">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <input
+                          type="url"
+                          value={linkInput}
+                          onChange={(e) => setLinkInput(e.target.value)}
+                          placeholder="Paste Google Drive, Docs, Sheets, Figma, or internal link..."
+                          disabled={isSavingLink}
+                          className="flex-1 px-3 py-2 text-xs rounded-lg border border-indigo-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs font-mono"
+                        />
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={handleSaveWorkLink}
+                            disabled={isSavingLink}
+                            className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-colors disabled:opacity-60 cursor-pointer flex items-center space-x-1.5"
+                          >
+                            {isSavingLink ? (
+                              <span>Saving...</span>
+                            ) : (
+                              <span>Save Link</span>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsEditingLink(false);
+                              setLinkInput(localWorkLink);
+                              setLinkError('');
+                            }}
+                            disabled={isSavingLink}
+                            className="px-3 py-2 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-indigo-700/80 block">
+                        Direct link to Google Drive, Docs, Sheets, Figma, or internal resources.
+                      </span>
+                    </div>
+                  ) : localWorkLink ? (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
+                      <div className="space-y-0.5 overflow-hidden">
+                        <span className="text-xs text-indigo-800 truncate block max-w-md font-mono select-all">
+                          {localWorkLink}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2 shrink-0">
+                        <a
+                          href={localWorkLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Open Work ↗</span>
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-1">
+                      <span className="text-xs text-slate-500 italic">
+                        No Google Drive / work link provided for this task yet.
+                      </span>
+                      {canEditWorkLink && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLinkInput('');
+                            setIsEditingLink(true);
+                            setLinkError('');
+                          }}
+                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white border border-indigo-200 hover:bg-indigo-50/50 text-indigo-700 text-xs font-semibold shadow-2xs transition-colors shrink-0 cursor-pointer self-start sm:self-auto"
+                        >
+                          <Link2 className="w-3.5 h-3.5" />
+                          <span>Add Work Link</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {linkError && (
+                    <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-center space-x-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{linkError}</span>
+                    </div>
+                  )}
+
+                  {linkSuccess && (
+                    <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center space-x-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>Work link updated successfully!</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Description */}
                 <div>
