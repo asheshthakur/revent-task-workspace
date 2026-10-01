@@ -1,7 +1,7 @@
 {
-  "name": "Revent Task Workspace",
-  "short_name": "Revent Tasks",
-  "description": "Enterprise Task Management, Real-time Chat & Operational Workspace",
+  "name": "VEYA Work Management",
+  "short_name": "VEYA",
+  "description": "Multi-Tenant Enterprise Task, Finance & Operational Workspace",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

@@ -1,0 +1,15 @@
+# VEYA Enterprise Work & Task Management
+# Disallow search engine crawlers from indexing private operational application routes
+
+User-agent: *
+Disallow: /dashboard
+Disallow: /my-tasks
+Disallow: /all-tasks
+Disallow: /chat
+Disallow: /finance
+Disallow: /analytics
+Disallow: /audit-log
+Disallow: /settings
+Disallow: /team
+Disallow: /invite
+Disallow: /api/

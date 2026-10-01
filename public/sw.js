@@ -1,4 +1,4 @@
-// Revent Task Workspace Service Worker
+// VEYA Work Management Service Worker
 // Handles background push notifications, click handling, and offline caching gracefully.
 
 self.addEventListener('install', (event) => {
@@ -14,7 +14,7 @@ self.addEventListener('push', (event) => {
 
   try {
     const payload = event.data.json();
-    const title = payload.title || 'Revent Task Workspace';
+    const title = payload.title || 'VEYA';
     const options = {
       body: payload.body || 'You have a new update.',
       icon: payload.icon || '/favicon.ico',
@@ -23,7 +23,7 @@ self.addEventListener('push', (event) => {
         url: payload.target_url || payload.url || '/',
       },
       vibrate: [100, 50, 100],
-      tag: payload.tag || 'revent-notification',
+      tag: payload.tag || 'veya-notification',
       renotify: true,
     };
 

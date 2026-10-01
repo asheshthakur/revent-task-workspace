@@ -2,9 +2,10 @@ const { app, BrowserWindow, Notification, ipcMain, shell, Menu, Tray } = require
 const path = require('path');
 
 // Determine target server URL:
-// In development, you can run REVENT_URL=http://localhost:3000 npm start
-// In production, defaults to the live deployed Cloudflare Workers URL
-const TARGET_URL = process.env.REVENT_URL || 'https://revent-task-workspace.revent-workspace.workers.dev';
+// In development, you can run VEYA_URL=http://localhost:3000 npm start
+// In production, defaults to the canonical VEYA application URL or live fallback
+const TARGET_URL = process.env.VEYA_URL || process.env.REVENT_URL || 'https://app.veya.com';
+const FALLBACK_URL = 'https://revent-task-workspace.revent-workspace.workers.dev';
 
 let mainWindow = null;
 let tray = null;
@@ -25,7 +26,12 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadURL(TARGET_URL);
+  mainWindow.loadURL(TARGET_URL).catch((err) => {
+    console.warn(`Failed to connect to ${TARGET_URL}: ${err.message}. Retrying fallback URL ${FALLBACK_URL}...`);
+    mainWindow.loadURL(FALLBACK_URL).catch((fallbackErr) => {
+      console.error(`Failed to load fallback URL: ${fallbackErr.message}`);
+    });
+  });
 
   // Handle external links (e.g. Google Drive, Figma, Docs) by opening them in user's default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {

@@ -1,8 +1,10 @@
-# REVENT Task Workspace
+# VEYA — Enterprise Work & Task Management
 
-**REVENT Task Workspace** is an internal employee task, finance, and work management platform engineered for distributed teams.
+**VEYA** is a multi-tenant enterprise task, finance, and operational work management SaaS platform engineered for modern teams and distributed organizations.
 
-- **Live Production URL**: [https://revent-task-workspace.revent-workspace.workers.dev/](https://revent-task-workspace.revent-workspace.workers.dev/)
+- **Canonical Application URL**: [https://app.veya.com](https://app.veya.com)
+- **Production Workers.dev Fallback**: [https://revent-task-workspace.revent-workspace.workers.dev/](https://revent-task-workspace.revent-workspace.workers.dev/)
+- **Default / Initial Workspace**: Revent (`revent`)
 - **Hosting & Infrastructure**: Cloudflare Workers + Cloudflare D1 (Zero Mandatory Monthly Cost architecture, serverless edge with zero cold-start spin-down).
 
 ---
