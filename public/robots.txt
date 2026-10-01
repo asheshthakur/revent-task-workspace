@@ -1,7 +1,13 @@
 # VEYA Enterprise Work & Task Management
-# Disallow search engine crawlers from indexing private operational application routes
+# Allow public marketing & product overview pages, disallow private operational app routes
 
 User-agent: *
+Allow: /$
+Allow: /download
+Allow: /login
+Allow: /signup
+Allow: /sitemap.xml
+
 Disallow: /dashboard
 Disallow: /my-tasks
 Disallow: /all-tasks
@@ -13,3 +19,5 @@ Disallow: /settings
 Disallow: /team
 Disallow: /invite
 Disallow: /api/
+
+Sitemap: https://app.lucidmediax.in/sitemap.xml
