@@ -1,7 +1,7 @@
 {
-  "name": "revent-task-desktop",
+  "name": "veya-desktop",
   "version": "1.0.0",
-  "description": "Revent Task Workspace Desktop Client for macOS & Windows",
+  "description": "VEYA Work Management Desktop Client for macOS & Windows",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -10,7 +10,7 @@
     "dist:mac": "electron-builder --mac",
     "dist:win": "electron-builder --win"
   },
-  "author": "Revent Workspace",
+  "author": "VEYA",
   "license": "UNLICENSED",
   "dependencies": {},
   "devDependencies": {
@@ -18,8 +18,8 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.revent.workspace.desktop",
-    "productName": "Revent Task Workspace",
+    "appId": "com.veya.workspace.desktop",
+    "productName": "VEYA",
     "directories": {
       "output": "dist"
     },

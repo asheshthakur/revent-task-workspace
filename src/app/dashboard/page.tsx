@@ -92,6 +92,10 @@ export default function DashboardPage() {
         }
         const data = await res.json();
         if (data.authenticated && data.user) {
+          if (data.hasNoWorkspace) {
+            router.push('/workspaces/find');
+            return;
+          }
           setCurrentUser(data.user);
         } else {
           router.push('/login');

@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import crypto from 'crypto';
 import { queryFirst } from './db';
 import { PASSWORD_RESET_AUTHORISED_EMAILS } from './constants';
@@ -149,13 +149,34 @@ export async function getTenantContext(): Promise<TenantContext | null> {
   }));
 
   // Determine active organisation
-  // Priority: 1. Cookie 'veya_active_org_id', 2. First organisation in user's memberships
-  const requestedOrgIdStr = cookieStore.get(WORKSPACE_COOKIE_NAME)?.value;
+  // Priority:
+  // 1. Hostname Subdomain (e.g. acme.veya.com, revent.veya.com)
+  // 2. Explicit Cookie 'veya_active_org_id'
+  // 3. First organisation in user's memberships
   let activeOrg: ActiveOrganisation | undefined;
 
-  if (requestedOrgIdStr) {
-    const requestedOrgId = parseInt(requestedOrgIdStr, 10);
-    activeOrg = allOrgs.find((o) => o.id === requestedOrgId);
+  try {
+    const reqHeaders = await headers();
+    const host = reqHeaders.get('x-forwarded-host') || reqHeaders.get('host') || '';
+    const cleanHost = host.split(':')[0].toLowerCase();
+
+    // Check if host is a subdomain of veya.com or custom domain (excluding root & workers.dev)
+    if (cleanHost.endsWith('.veya.com')) {
+      const sub = cleanHost.replace('.veya.com', '').trim();
+      if (sub && sub !== 'www' && sub !== 'app') {
+        activeOrg = allOrgs.find((o) => o.slug.toLowerCase() === sub);
+      }
+    }
+  } catch {
+    // Ignore header resolution in non-request contexts
+  }
+
+  if (!activeOrg) {
+    const requestedOrgIdStr = cookieStore.get(WORKSPACE_COOKIE_NAME)?.value;
+    if (requestedOrgIdStr) {
+      const requestedOrgId = parseInt(requestedOrgIdStr, 10);
+      activeOrg = allOrgs.find((o) => o.id === requestedOrgId);
+    }
   }
 
   if (!activeOrg) {
@@ -191,4 +212,72 @@ export async function getTenantContext(): Promise<TenantContext | null> {
 export async function getCurrentUser(): Promise<UserSession | null> {
   const ctx = await getTenantContext();
   return ctx ? ctx.user : null;
+}
+
+/**
+ * Returns the authenticated VEYA global user regardless of workspace membership.
+ */
+export async function getGlobalUser(): Promise<{ user: UserSession; allOrgs: ActiveOrganisation[] } | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  if (!token) return null;
+
+  const session = await verifyToken(token);
+  if (!session) return null;
+
+  const tokenHash = hashToken(token);
+
+  const dbSession = await queryFirst<any>(
+    `SELECT * FROM sessions 
+     WHERE session_token_hash = ? AND revoked_at IS NULL AND expires_at > datetime('now')`,
+    [tokenHash]
+  );
+  if (!dbSession) return null;
+
+  const user = await queryFirst<any>(
+    'SELECT id, name, email, role, department, is_active, animal_emoji, selected_status FROM users WHERE id = ?',
+    [session.id]
+  );
+  if (!user || user.is_active !== 1) return null;
+
+  const { queryAll } = await import('./db');
+  const userMemberships = await queryAll<any>(
+    `SELECT 
+       o.id, 
+       o.name, 
+       o.slug, 
+       o.logo, 
+       om.role as member_role, 
+       om.department as member_department
+     FROM organisation_members om
+     JOIN organisations o ON om.organisation_id = o.id
+     WHERE om.user_id = ? AND om.status = 'active' AND o.is_active = 1
+     ORDER BY o.id ASC`,
+    [user.id]
+  );
+
+  const allOrgs: ActiveOrganisation[] = (userMemberships || []).map((m) => ({
+    id: m.id,
+    name: m.name,
+    slug: m.slug,
+    logo: m.logo || '',
+    role: m.member_role,
+    department: m.member_department || '',
+    is_owner: m.member_role === 'owner',
+    is_admin: m.member_role === 'owner' || m.member_role === 'admin',
+  }));
+
+  const userSession: UserSession = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: 'employee',
+    department: user.department || '',
+    animal_emoji: user.animal_emoji || '🦊',
+    selected_status: user.selected_status || 'Online',
+    can_reset_other_user_passwords: false,
+    sessionId: tokenHash,
+  };
+
+  return { user: userSession, allOrgs };
 }

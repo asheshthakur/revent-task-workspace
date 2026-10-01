@@ -25,6 +25,7 @@ import {
   FileCheck,
   Bell,
   Check,
+  Building2,
 } from 'lucide-react';
 import { USER_PRESENCE_STATUSES, UserPresenceStatus } from '@/lib/constants';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
@@ -349,6 +350,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
       show: user.role === 'admin',
     },
     {
+      label: 'Workspace Settings',
+      href: '/settings/workspace',
+      icon: Building2,
+      show: user.role === 'admin',
+    },
+    {
       label: 'Account Settings',
       href: '/settings',
       icon: Settings,
@@ -370,7 +377,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
     if (pathname === '/team') return 'Employee & Team Management';
     if (pathname === '/analytics') return 'Employee & Team Performance Analytics';
     if (pathname === '/audit-log') return 'Organization Activity & Audit Log';
-    if (pathname === '/settings') return 'Account Security & Password Settings';
+    if (pathname === '/settings/workspace') return 'Workspace Settings & Team Members';
+    if (pathname === '/settings') return 'Account Security & Personal Settings';
     if (pathname === '/my-tasks') return 'My Assigned Work';
     return 'Workspace';
   };

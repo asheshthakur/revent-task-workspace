@@ -2,35 +2,48 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Lock, Mail, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Lock, Mail, User, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 
-export default function LoginPage() {
+export default function SignUpPage() {
+  const router = useRouter();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+        }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Login failed');
+        throw new Error(data.error || 'Failed to create account');
       }
 
-      // Hard redirect to dashboard to ensure session cookie is attached
-      window.location.href = '/dashboard';
+      // Check if user has an active workspace membership; otherwise navigate to find or create workspace
+      window.location.href = '/workspaces/find';
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Invalid credentials';
+      const msg = err instanceof Error ? err.message : 'Error creating account';
       setError(msg);
       setLoading(false);
     }
@@ -43,7 +56,7 @@ export default function LoginPage() {
           VEYA
         </h2>
         <p className="text-sm text-slate-400">
-          Enter your organization credentials to sign in
+          Create your personal VEYA account
         </p>
       </div>
 
@@ -56,10 +69,27 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form className="space-y-4" onSubmit={handleLogin}>
+          <form className="space-y-4" onSubmit={handleSignUp}>
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Email / Username
+                Full Name *
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your Name"
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                />
+                <User className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Work Email *
               </label>
               <div className="relative">
                 <input
@@ -76,7 +106,7 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Password
+                Password *
               </label>
               <div className="relative">
                 <input
@@ -84,7 +114,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Minimum 6 characters"
                   className="w-full pl-10 pr-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                 />
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
@@ -99,11 +129,11 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Authenticating...</span>
+                  <span>Creating Account...</span>
                 </>
               ) : (
                 <>
-                  <span>Sign in</span>
+                  <span>Create VEYA Account</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -112,23 +142,14 @@ export default function LoginPage() {
 
           <div className="mt-6 pt-5 border-t border-slate-100 text-center space-y-2">
             <p className="text-xs text-slate-500">
-              New to VEYA?
+              Already have a VEYA account?
             </p>
-            <div className="flex items-center justify-center space-x-4 text-xs font-bold">
-              <Link
-                href="/signup"
-                className="text-indigo-600 hover:text-indigo-700 hover:underline"
-              >
-                Create VEYA Account
-              </Link>
-              <span className="text-slate-300">•</span>
-              <Link
-                href="/onboarding"
-                className="text-indigo-600 hover:text-indigo-700 hover:underline"
-              >
-                Create Workspace
-              </Link>
-            </div>
+            <Link
+              href="/login"
+              className="inline-block text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline"
+            >
+              Sign In to VEYA &rarr;
+            </Link>
           </div>
         </div>
       </div>
