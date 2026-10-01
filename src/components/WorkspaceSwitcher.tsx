@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, Plus, Check, Building2 } from 'lucide-react';
+import { ChevronDown, Plus, Check } from 'lucide-react';
+import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 
 interface Organisation {
   id: number;
@@ -22,10 +23,6 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = () => {
   const [allOrgs, setAllOrgs] = useState<Organisation[]>([]);
   const [isSwitching, setIsSwitching] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newOrgName, setNewOrgName] = useState('');
-  const [newDepartment, setNewDepartment] = useState('');
-  const [createError, setCreateError] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
 
   const fetchWorkspaces = async () => {
     try {
@@ -68,42 +65,6 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = () => {
     } catch {
       alert('Network error switching workspace');
       setIsSwitching(false);
-    }
-  };
-
-  const handleCreateWorkspace = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newOrgName.trim()) return;
-    setIsCreating(true);
-    setCreateError('');
-
-    try {
-      const res = await fetch('/api/workspaces', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newOrgName.trim(),
-          department: newDepartment.trim() || 'Leadership',
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        // Automatically switch to the newly created workspace
-        await fetch('/api/workspaces/switch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ organisationId: data.organisation.id }),
-        });
-        window.location.reload();
-      } else {
-        const data = await res.json();
-        setCreateError(data.error || 'Failed to create workspace');
-        setIsCreating(false);
-      }
-    } catch {
-      setCreateError('An error occurred. Please try again.');
-      setIsCreating(false);
     }
   };
 
@@ -192,74 +153,11 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = () => {
         )}
       </div>
 
-      {/* Modal: Create New Workspace */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-slate-900 animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                <Building2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Create New Workspace</h3>
-                <p className="text-xs text-slate-500">Organize projects & team members into a dedicated tenant</p>
-              </div>
-            </div>
-
-            {createError && (
-              <div className="p-3 mb-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
-                {createError}
-              </div>
-            )}
-
-            <form onSubmit={handleCreateWorkspace} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Workspace / Organization Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Acme Digital, Beta Consulting"
-                  value={newOrgName}
-                  onChange={(e) => setNewOrgName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Your Department / Title in this Workspace
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Executive, Product, Engineering"
-                  value={newDepartment}
-                  onChange={(e) => setNewDepartment(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isCreating || !newOrgName.trim()}
-                  className="px-4 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-sm disabled:opacity-50"
-                >
-                  {isCreating ? 'Creating...' : 'Create & Switch'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Centered Modal: Create New Workspace (Rendered via Portal over main application) */}
+      <CreateWorkspaceModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      />
     </>
   );
 };
