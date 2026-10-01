@@ -4,7 +4,6 @@ import { Metadata } from 'next';
 import { 
   ArrowLeft, 
   Download, 
-  Apple, 
   Monitor, 
   CheckCircle2, 
   ShieldCheck, 
@@ -12,6 +11,8 @@ import {
   Bell, 
   ArrowRight
 } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Download VEYA for Mac & Windows | Desktop Work Client',
