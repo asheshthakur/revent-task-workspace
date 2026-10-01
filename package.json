@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "desktop:install": "npm --prefix desktop install",
+    "desktop:dev": "npm --prefix desktop start",
+    "desktop:dist:mac": "npm --prefix desktop run dist:mac",
+    "desktop:dist:win": "npm --prefix desktop run dist:win"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

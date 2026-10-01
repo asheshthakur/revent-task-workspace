@@ -2,7 +2,25 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { KeyRound, Shield, CheckCircle2, AlertCircle, Loader2, Download, FileSpreadsheet, Database, Server } from 'lucide-react';
+import {
+  KeyRound,
+  Shield,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Download,
+  FileSpreadsheet,
+  Database,
+  Server,
+  Bell,
+  Monitor,
+  Volume2,
+  Send,
+  Laptop,
+  MessageSquare,
+  CheckSquare,
+  DollarSign
+} from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
 
 interface UserProfile {
@@ -243,6 +261,9 @@ export default function SettingsPage() {
           </form>
         </div>
 
+        {/* NOTIFICATION PREFERENCES */}
+        <NotificationPreferencesCard />
+
         {/* ADMIN-ONLY DATA BACKUP & ORGANISATION EXPORT */}
         {currentUser.role === 'admin' && (
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-5">
@@ -365,5 +386,306 @@ export default function SettingsPage() {
         )}
       </div>
     </AppLayout>
+  );
+}
+
+function NotificationPreferencesCard() {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [prefs, setPrefs] = useState({
+    master_enabled: 1,
+    in_app_enabled: 1,
+    browser_enabled: 0,
+    desktop_enabled: 1,
+    tasks_enabled: 1,
+    task_assignments: 1,
+    task_status_changes: 1,
+    task_deadlines: 1,
+    task_discussions: 1,
+    chat_messages: 1,
+    finance_enabled: 1,
+    mentions_enabled: 1,
+  });
+
+  useEffect(() => {
+    fetch('/api/notifications/preferences')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.preferences) {
+          setPrefs((prev) => ({ ...prev, ...data.preferences }));
+        }
+      })
+      .catch((err) => console.error('Failed to load preferences:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleToggle = async (key: keyof typeof prefs) => {
+    const nextVal = prefs[key] ? 0 : 1;
+    const newPrefs = { ...prefs, [key]: nextVal };
+    setPrefs(newPrefs);
+
+    // If enabling browser notifications, prompt permission if supported
+    if (key === 'browser_enabled' && nextVal === 1 && typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') {
+          setTestResult('Browser permission was denied in your browser settings.');
+          setPrefs((p) => ({ ...p, browser_enabled: 0 }));
+          return;
+        }
+      }
+    }
+
+    try {
+      setSaving(true);
+      await fetch('/api/notifications/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: nextVal }),
+      });
+    } catch (err) {
+      console.error('Error saving notification preferences:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSendTestNotification = async () => {
+    try {
+      setTesting(true);
+      setTestResult(null);
+      const res = await fetch('/api/notifications/test', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTestResult('Test notification sent! Check the bell icon at the top right.');
+        // If web notification API is enabled and permitted, show instant browser test too
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && prefs.browser_enabled) {
+          new Notification('Revent Test Notification', {
+            body: 'Browser push notifications are active and working!',
+            icon: '/favicon.ico',
+          });
+        }
+      } else {
+        setTestResult(data.error || 'Failed to send test notification');
+      }
+    } catch {
+      setTestResult('Network error sending test notification');
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs flex items-center justify-center">
+        <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-5">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="flex items-center space-x-2">
+          <Bell className="w-5 h-5 text-indigo-600" />
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+            Notification Preferences
+          </h3>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            onClick={handleSendTestNotification}
+            disabled={testing}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold border border-indigo-200/60 transition-colors cursor-pointer"
+          >
+            {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            <span>Send Test Notification</span>
+          </button>
+        </div>
+      </div>
+
+      {testResult && (
+        <div className="p-3 rounded-xl bg-indigo-50/80 border border-indigo-200 text-indigo-800 text-xs font-medium flex items-center space-x-2">
+          <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+          <span>{testResult}</span>
+        </div>
+      )}
+
+      {/* Master Toggle */}
+      <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+        <div>
+          <span className="text-xs font-bold text-slate-900 block">Master Notification Toggle</span>
+          <span className="text-[11px] text-slate-500">Enable or pause all system notifications across devices</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => handleToggle('master_enabled')}
+          className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+            prefs.master_enabled ? 'bg-indigo-600' : 'bg-slate-300'
+          }`}
+        >
+          <div
+            className={`w-5 h-5 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs ${
+              prefs.master_enabled ? 'translate-x-5' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+
+      {/* Delivery Channels */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Delivery Channels</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <Bell className="w-4 h-4 text-slate-600" />
+              <div>
+                <span className="text-xs font-bold text-slate-900 block">In-App Center</span>
+                <span className="text-[10px] text-slate-500">Bell icon header badge</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleToggle('in_app_enabled')}
+              className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${
+                prefs.in_app_enabled ? 'bg-indigo-600' : 'bg-slate-300'
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs ${
+                  prefs.in_app_enabled ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <Monitor className="w-4 h-4 text-slate-600" />
+              <div>
+                <span className="text-xs font-bold text-slate-900 block">Web Browser</span>
+                <span className="text-[10px] text-slate-500">HTML5 Push banner</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleToggle('browser_enabled')}
+              className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${
+                prefs.browser_enabled ? 'bg-indigo-600' : 'bg-slate-300'
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs ${
+                  prefs.browser_enabled ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <Laptop className="w-4 h-4 text-slate-600" />
+              <div>
+                <span className="text-xs font-bold text-slate-900 block">Desktop App</span>
+                <span className="text-[10px] text-slate-500">macOS & Windows</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleToggle('desktop_enabled')}
+              className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${
+                prefs.desktop_enabled ? 'bg-indigo-600' : 'bg-slate-300'
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs ${
+                  prefs.desktop_enabled ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Module Events */}
+      <div className="space-y-3 pt-2">
+        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Module Event Subscriptions</h4>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between py-2 border-b border-slate-100">
+            <div className="flex items-center space-x-2.5">
+              <CheckSquare className="w-4 h-4 text-indigo-600" />
+              <div>
+                <span className="text-xs font-bold text-slate-800">Task Assignments & Updates</span>
+                <span className="text-[11px] text-slate-500 block">When tasks are assigned to you or updated</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleToggle('tasks_enabled')}
+              className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${
+                prefs.tasks_enabled ? 'bg-indigo-600' : 'bg-slate-300'
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs ${
+                  prefs.tasks_enabled ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between py-2 border-b border-slate-100">
+            <div className="flex items-center space-x-2.5">
+              <MessageSquare className="w-4 h-4 text-emerald-600" />
+              <div>
+                <span className="text-xs font-bold text-slate-800">Direct Chat & Team Messages</span>
+                <span className="text-[11px] text-slate-500 block">When you receive incoming direct messages</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleToggle('chat_messages')}
+              className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${
+                prefs.chat_messages ? 'bg-indigo-600' : 'bg-slate-300'
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs ${
+                  prefs.chat_messages ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center space-x-2.5">
+              <DollarSign className="w-4 h-4 text-purple-600" />
+              <div>
+                <span className="text-xs font-bold text-slate-800">Finance & Invoice Activities</span>
+                <span className="text-[11px] text-slate-500 block">Invoice status changes and payment alerts</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleToggle('finance_enabled')}
+              className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${
+                prefs.finance_enabled ? 'bg-indigo-600' : 'bg-slate-300'
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs ${
+                  prefs.finance_enabled ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

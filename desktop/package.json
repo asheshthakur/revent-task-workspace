@@ -1,0 +1,38 @@
+{
+  "name": "revent-task-desktop",
+  "version": "1.0.0",
+  "description": "Revent Task Workspace Desktop Client for macOS & Windows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win"
+  },
+  "author": "Revent Workspace",
+  "license": "UNLICENSED",
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.revent.workspace.desktop",
+    "productName": "Revent Task Workspace",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

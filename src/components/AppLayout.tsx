@@ -23,6 +23,8 @@ import {
   Receipt,
   CreditCard,
   FileCheck,
+  Bell,
+  Check,
 } from 'lucide-react';
 import { USER_PRESENCE_STATUSES, UserPresenceStatus } from '@/lib/constants';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
@@ -58,7 +60,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Presence & Chat states
+  // Presence & Chat & Notification states
   const [activeUsers, setActiveUsers] = useState<PresenceUser[]>([]);
   const [offlineUsers, setOfflineUsers] = useState<PresenceUser[]>([]);
   const [unreadChatCount, setUnreadChatCount] = useState<number>(0);
@@ -68,6 +70,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
   );
   const presenceScrollRef = useRef<HTMLDivElement>(null);
 
+  // Notifications state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState<number>(0);
+  const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+
   const handlePresenceWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     const el = presenceScrollRef.current;
     if (!el) return;
@@ -76,19 +84,96 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
     }
   };
 
-  // Close profile dropdown when clicking outside
+  // Close dropdowns when clicking outside and register SW
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target.closest('#top-profile-control') && !target.closest('#top-profile-dropdown')) {
         setIsProfileMenuOpen(false);
       }
+      if (!target.closest('#top-notification-bell') && !target.closest('#top-notifications-dropdown')) {
+        setIsNotificationMenuOpen(false);
+      }
     };
     document.addEventListener('click', handleOutsideClick);
+
+    // Register service worker if available in browser
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch((err) => {
+        console.warn('SW registration skipped:', err);
+      });
+    }
+
+    // Listen for desktop deep link navigation
+    if (typeof window !== 'undefined' && (window as any).reventDesktop?.onNavigate) {
+      (window as any).reventDesktop.onNavigate((url: string) => {
+        if (url) router.push(url);
+      });
+    }
+
     return () => document.removeEventListener('click', handleOutsideClick);
   }, []);
 
-  // Heartbeat & Presence Polling (Optimized 25s interval)
+  const fetchNotifications = async () => {
+    try {
+      setLoadingNotifications(true);
+      const res = await fetch('/api/notifications?limit=15');
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+        const unread = data.unreadCount || 0;
+        setUnreadNotificationCount(unread);
+
+        // Update desktop badge if running in Electron desktop app
+        if (typeof window !== 'undefined' && (window as any).reventDesktop?.setBadgeCount) {
+          (window as any).reventDesktop.setBadgeCount(unread);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    try {
+      await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markAllAsRead: true }),
+      });
+      setUnreadNotificationCount(0);
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
+  };
+
+  const handleNotificationClick = async (notif: any) => {
+    try {
+      if (!notif.is_read) {
+        await fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notificationId: notif.id }),
+        });
+        setUnreadNotificationCount((prev) => Math.max(0, prev - 1));
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notif.id ? { ...n, is_read: 1 } : n))
+        );
+      }
+    } catch (err) {
+      console.error('Error updating notification read state:', err);
+    } finally {
+      setIsNotificationMenuOpen(false);
+      if (notif.target_url) {
+        router.push(notif.target_url);
+      }
+    }
+  };
+
+  // Heartbeat & Presence & Notification Polling (25s interval)
   useEffect(() => {
     let isMounted = true;
 
@@ -120,14 +205,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
       }
     };
 
-    // Initial heartbeat
+    // Initial heartbeat & notification fetch
     sendHeartbeatAndFetchPresence();
+    fetchNotifications();
 
     // Heartbeat every 25 seconds
     const interval = setInterval(() => {
       // Only send heartbeat if tab is visible to conserve free tier limits
       if (typeof document !== 'undefined' && !document.hidden) {
         sendHeartbeatAndFetchPresence();
+        fetchNotifications();
       }
     }, 25000);
 
@@ -544,6 +631,112 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
               </button>
             )}
             <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+
+            {/* Notification Bell Dropdown */}
+            <div className="relative">
+              <button
+                id="top-notification-bell"
+                type="button"
+                onClick={() => {
+                  setIsNotificationMenuOpen((prev) => !prev);
+                  if (!isNotificationMenuOpen) {
+                    fetchNotifications();
+                  }
+                }}
+                className="relative p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer border border-transparent hover:border-slate-200"
+                aria-label="Notifications"
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadNotificationCount > 0 && (
+                  <span className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full ring-2 ring-white animate-in zoom-in-50 duration-150">
+                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Dropdown Panel */}
+              {isNotificationMenuOpen && (
+                <div
+                  id="top-notifications-dropdown"
+                  className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200/80 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+                >
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+                    <div className="flex items-center space-x-2">
+                      <Bell className="w-4 h-4 text-indigo-600" />
+                      <span className="font-bold text-xs text-slate-800">Notifications</span>
+                      {unreadNotificationCount > 0 && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-indigo-100 text-indigo-700 rounded-full">
+                          {unreadNotificationCount} new
+                        </span>
+                      )}
+                    </div>
+                    {unreadNotificationCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllNotificationsRead}
+                        className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800 transition-colors flex items-center space-x-1 cursor-pointer"
+                      >
+                        <Check className="w-3 h-3" />
+                        <span>Mark all read</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                    {loadingNotifications && notifications.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-400">Loading notifications...</div>
+                    ) : notifications.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                        <p className="text-xs font-medium text-slate-600">No notifications yet</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">We'll alert you when tasks, chats, or updates happen.</p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          onClick={() => handleNotificationClick(notif)}
+                          className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer flex items-start space-x-3 text-left ${
+                            !notif.is_read ? 'bg-indigo-50/40' : ''
+                          }`}
+                        >
+                          <div className="text-xl shrink-0 mt-0.5">
+                            {notif.actor_animal_emoji || '🔔'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className={`text-xs truncate ${!notif.is_read ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
+                                {notif.title}
+                              </p>
+                              {!notif.is_read && (
+                                <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 ml-2" />
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5 leading-snug">
+                              {notif.body}
+                            </p>
+                            <span className="text-[10px] text-slate-400 mt-1 block">
+                              {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(notif.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="p-2 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between px-4">
+                    <Link
+                      href="/settings"
+                      onClick={() => setIsNotificationMenuOpen(false)}
+                      className="text-[11px] text-slate-500 hover:text-indigo-600 font-medium transition-colors"
+                    >
+                      Notification Preferences
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Redesigned Top-Right Profile Control & Compact Account Menu */}
             <div className="relative">

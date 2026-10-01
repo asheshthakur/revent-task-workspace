@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "VEYA",
   description: "VEYA Work & Task Management",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

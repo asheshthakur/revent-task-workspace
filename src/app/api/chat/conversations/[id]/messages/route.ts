@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getTenantContext } from '@/lib/auth';
 import { queryAll, queryFirst, queryRun } from '@/lib/db';
+import { createNotificationEvent } from '@/lib/notifications';
 
 interface Context {
   params: Promise<{ id: string }>;
@@ -176,6 +177,27 @@ export async function POST(req: Request, context: Context) {
       SET last_read_at = ?
       WHERE conversation_id = ? AND user_id = ?
     `, [now, convId, user.id]);
+
+    // Dispatch chat message notifications to other conversation members
+    const otherMembers = await queryAll<{ user_id: number }>(`
+      SELECT user_id FROM conversation_members
+      WHERE conversation_id = ? AND user_id != ?
+    `, [convId, user.id]);
+
+    const snippetText = cleanMessage.length > 50 ? cleanMessage.slice(0, 50) + '...' : cleanMessage;
+    for (const mem of otherMembers) {
+      await createNotificationEvent({
+        organisationId: activeOrg.id,
+        recipientUserId: mem.user_id,
+        actorUserId: user.id,
+        type: 'chat_message',
+        title: `Message from ${user.name}`,
+        body: snippetText,
+        targetUrl: `/chat?conversationId=${convId}`,
+        entityType: 'Conversation',
+        entityId: convId,
+      });
+    }
 
     const createdMsg = {
       id: messageId,

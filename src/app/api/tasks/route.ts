@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getTenantContext } from '@/lib/auth';
 import { queryFirst, queryAll, queryRun, logAuditAction } from '@/lib/db';
 import { PRIORITY_MAP, PRIORITIES, STATUSES } from '@/lib/constants';
+import { createNotificationEvent } from '@/lib/notifications';
 
 export async function GET(req: Request) {
   try {
@@ -262,6 +263,19 @@ export async function POST(req: Request) {
       entityTitle: task_name.trim(),
       oldValue: '',
       newValue: `Assigned to ${assignedMember.name} with priority ${priority}`,
+    });
+
+    // Dispatch Authoritative Notification Event (self-actions automatically suppressed)
+    await createNotificationEvent({
+      organisationId: activeOrg.id,
+      recipientUserId: assignedMember.id,
+      actorUserId: user.id,
+      type: 'task_assigned',
+      title: 'New Task Assigned',
+      body: `${user.name} assigned you: "${task_name.trim()}"`,
+      targetUrl: `/my-tasks?taskId=${newTaskId}`,
+      entityType: 'Task',
+      entityId: newTaskId,
     });
 
     const createdTask = await queryFirst<any>(`

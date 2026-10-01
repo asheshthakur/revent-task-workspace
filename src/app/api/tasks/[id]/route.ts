@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getTenantContext } from '@/lib/auth';
 import { queryFirst, queryAll, queryRun, logAuditAction } from '@/lib/db';
 import { PRIORITY_MAP, PRIORITIES, STATUSES } from '@/lib/constants';
+import { createNotificationEvent } from '@/lib/notifications';
 
 export async function GET(
   req: Request,
@@ -172,6 +173,20 @@ export async function PATCH(
           oldValue: task.status,
           newValue: body.status,
         });
+
+        // Notify Assigner if assignee updated status; or notify Assignee if assigner/admin updated status
+        const notifyRecipientId = user.id === task.assigned_to ? task.created_by : task.assigned_to;
+        await createNotificationEvent({
+          organisationId: activeOrg.id,
+          recipientUserId: notifyRecipientId,
+          actorUserId: user.id,
+          type: body.status === 'Completed' ? 'task_completed' : 'task_status_changed',
+          title: body.status === 'Completed' ? 'Task Completed' : 'Task Status Updated',
+          body: `${user.name} marked "${task.task_name}" as ${body.status}`,
+          targetUrl: `/my-tasks?taskId=${taskId}`,
+          entityType: 'Task',
+          entityId: taskId,
+        });
       }
     }
 
@@ -207,6 +222,20 @@ export async function PATCH(
           entityTitle: task.task_name,
           oldValue: task.drive_link || 'None',
           newValue: trimmedLink || 'None',
+        });
+
+        // Notify Assigner if Assignee updated the link
+        const notifyTarget = user.id === task.assigned_to ? task.created_by : task.assigned_to;
+        await createNotificationEvent({
+          organisationId: activeOrg.id,
+          recipientUserId: notifyTarget,
+          actorUserId: user.id,
+          type: 'work_link_updated',
+          title: 'Work Link Updated',
+          body: `${user.name} added/updated the work link on "${task.task_name}"`,
+          targetUrl: `/my-tasks?taskId=${taskId}`,
+          entityType: 'Task',
+          entityId: taskId,
         });
       }
     }
@@ -261,6 +290,19 @@ export async function PATCH(
           entityTitle: task.task_name,
           oldValue: task.current_assigned_name,
           newValue: targetMember.name,
+        });
+
+        // Notify newly assigned employee
+        await createNotificationEvent({
+          organisationId: activeOrg.id,
+          recipientUserId: targetMember.id,
+          actorUserId: user.id,
+          type: 'task_reassigned',
+          title: 'Task Reassigned to You',
+          body: `${user.name} reassigned "${task.task_name}" to you`,
+          targetUrl: `/my-tasks?taskId=${taskId}`,
+          entityType: 'Task',
+          entityId: taskId,
         });
       }
 
