@@ -46,6 +46,14 @@ export const metadata: Metadata = {
   },
 };
 
+function SectionEyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-800/60 text-indigo-300 text-xs font-bold uppercase tracking-widest shadow-xs">
+      {children}
+    </div>
+  );
+}
+
 export default async function HomePage() {
   // If user is already authenticated in this browser session, seamlessly route to dashboard
   let user = null;
@@ -370,27 +378,29 @@ export default async function HomePage() {
         {/* ========================================== */}
         {/* 2. VALUE PROPOSITION STRIP                 */}
         {/* ========================================== */}
-        <section className="py-16 bg-slate-950 border-b border-slate-900">
+        <section className="py-20 sm:py-24 bg-slate-950 border-b border-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <p className="text-center text-xs font-bold uppercase tracking-wider text-slate-500 mb-10">
-              Everything your team needs to move work forward
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              <div className="space-y-2">
-                <div className="text-sm font-bold text-white">Clear Task Ownership</div>
-                <div className="text-xs text-slate-400 leading-relaxed">Assign, track, and complete work with context.</div>
+            <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                Everything your team needs to move work forward
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+              <div className="space-y-2.5 p-4 rounded-xl bg-slate-900/30 border border-slate-800/50">
+                <div className="text-base font-bold text-white">Clear Task Ownership</div>
+                <div className="text-xs text-slate-400 leading-relaxed">Assign, track, and complete work with full context.</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-sm font-bold text-white">Connected Context</div>
-                <div className="text-xs text-slate-400 leading-relaxed">Keep discussion threads right beside tasks.</div>
+              <div className="space-y-2.5 p-4 rounded-xl bg-slate-900/30 border border-slate-800/50">
+                <div className="text-base font-bold text-white">Connected Context</div>
+                <div className="text-xs text-slate-400 leading-relaxed">Keep discussion threads right beside each assignment.</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-sm font-bold text-white">Total Visibility</div>
-                <div className="text-xs text-slate-400 leading-relaxed">Live teammate presence and audit logs.</div>
+              <div className="space-y-2.5 p-4 rounded-xl bg-slate-900/30 border border-slate-800/50">
+                <div className="text-base font-bold text-white">Total Visibility</div>
+                <div className="text-xs text-slate-400 leading-relaxed">Live teammate presence, active status, and audit logs.</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-sm font-bold text-white">Work Anywhere</div>
-                <div className="text-xs text-slate-400 leading-relaxed">Accessible on web and dedicated desktop app.</div>
+              <div className="space-y-2.5 p-4 rounded-xl bg-slate-900/30 border border-slate-800/50">
+                <div className="text-base font-bold text-white">Work Anywhere</div>
+                <div className="text-xs text-slate-400 leading-relaxed">Accessible on modern web and dedicated native desktop app.</div>
               </div>
             </div>
           </div>
@@ -399,16 +409,16 @@ export default async function HomePage() {
         {/* ========================================== */}
         {/* 3. WHAT IS VEYA?                           */}
         {/* ========================================== */}
-        <section id="product" className="py-24 sm:py-32 bg-slate-900/40 border-b border-slate-900">
+        <section id="product" className="scroll-mt-24 py-24 sm:py-32 bg-slate-900/40 border-b border-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center mb-20">
-              <span className="inline-block text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3.5 py-1.5 rounded-full border border-indigo-800/60 mb-6">
-                The Platform
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-6">
+            <div className="max-w-3xl mx-auto text-center mb-16 sm:mb-20 space-y-4">
+              <div>
+                <SectionEyebrow>The Platform</SectionEyebrow>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
                 One workspace for the work that matters.
               </h2>
-              <p className="text-base text-slate-400 leading-relaxed">
+              <p className="text-base text-slate-400 leading-relaxed max-w-2xl mx-auto">
                 Instead of juggling fragmented chat rooms, spread-out spreadsheets, and disconnected task trackers, VEYA unifies your operations. Give every assignment an owner, a deadline, and direct access to work materials.
               </p>
             </div>
@@ -450,16 +460,16 @@ export default async function HomePage() {
         {/* ========================================== */}
         {/* 4. CORE FEATURES                           */}
         {/* ========================================== */}
-        <section id="features" className="py-24 sm:py-32 bg-slate-950 border-b border-slate-900">
+        <section id="features" className="scroll-mt-24 py-24 sm:py-32 bg-slate-950 border-b border-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center mb-20">
-              <span className="inline-block text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3.5 py-1.5 rounded-full border border-indigo-800/60 mb-6">
-                Capabilities
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-6">
+            <div className="max-w-3xl mx-auto text-center mb-16 sm:mb-20 space-y-4">
+              <div>
+                <SectionEyebrow>Capabilities</SectionEyebrow>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
                 Engineered for speed, clarity, and accountability.
               </h2>
-              <p className="text-base text-slate-400 leading-relaxed">
+              <p className="text-base text-slate-400 leading-relaxed max-w-2xl mx-auto">
                 Built on Cloudflare serverless edge infrastructure with zero cold-start delay and real-time synchronization.
               </p>
             </div>
@@ -531,16 +541,16 @@ export default async function HomePage() {
         {/* ========================================== */}
         {/* 5. HOW IT WORKS                            */}
         {/* ========================================== */}
-        <section id="how-it-works" className="py-24 sm:py-32 bg-slate-900/40 border-b border-slate-900">
+        <section id="how-it-works" className="scroll-mt-24 py-24 sm:py-32 bg-slate-900/40 border-b border-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center mb-20">
-              <span className="inline-block text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3.5 py-1.5 rounded-full border border-indigo-800/60 mb-6">
-                Simple Adoption
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-6">
+            <div className="max-w-3xl mx-auto text-center mb-16 sm:mb-20 space-y-4">
+              <div>
+                <SectionEyebrow>Simple Adoption</SectionEyebrow>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
                 How VEYA works in 3 steps
               </h2>
-              <p className="text-base text-slate-400 leading-relaxed">
+              <p className="text-base text-slate-400 leading-relaxed max-w-2xl mx-auto">
                 Get up and running in minutes with no complex migration or onboarding required.
               </p>
             </div>
@@ -578,14 +588,14 @@ export default async function HomePage() {
         {/* ========================================== */}
         <section className="py-24 sm:py-32 bg-slate-950 border-b border-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center mb-20">
-              <span className="inline-block text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3.5 py-1.5 rounded-full border border-indigo-800/60 mb-6">
-                Tailored for Focus
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-6">
+            <div className="max-w-3xl mx-auto text-center mb-16 sm:mb-20 space-y-4">
+              <div>
+                <SectionEyebrow>Tailored for Focus</SectionEyebrow>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
                 Designed for teams that value execution.
               </h2>
-              <p className="text-base text-slate-400 leading-relaxed">
+              <p className="text-base text-slate-400 leading-relaxed max-w-2xl mx-auto">
                 Whether you run a 5-person agency or a multi-department team, VEYA adapts to your structure.
               </p>
             </div>
@@ -629,7 +639,7 @@ export default async function HomePage() {
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="rounded-3xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-purple-950/80 border border-indigo-800/40 p-8 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl">
               <div className="space-y-4 max-w-xl text-center md:text-left">
-                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300 text-xs font-medium">
+                <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300 text-xs font-semibold">
                   <Monitor className="w-3.5 h-3.5" />
                   <span>Native Desktop Apps</span>
                 </div>
@@ -657,16 +667,16 @@ export default async function HomePage() {
         {/* ========================================== */}
         {/* 8. FREQUENTLY ASKED QUESTIONS (AEO / FAQ)  */}
         {/* ========================================== */}
-        <section id="faq" className="py-24 sm:py-32 bg-slate-950 border-b border-slate-900">
+        <section id="faq" className="scroll-mt-24 py-28 sm:py-36 bg-slate-950 border-b border-slate-900">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center mb-16">
-              <span className="inline-block text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3.5 py-1.5 rounded-full border border-indigo-800/60 mb-6">
-                Frequently Asked Questions
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-4">
+            <div className="max-w-3xl mx-auto text-center mb-16 sm:mb-20 space-y-4">
+              <div>
+                <SectionEyebrow>Frequently Asked Questions</SectionEyebrow>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
                 Everything you need to know about VEYA
               </h2>
-              <p className="text-base text-slate-400">
+              <p className="text-base text-slate-400 leading-relaxed max-w-2xl mx-auto">
                 Clear, direct answers on what VEYA is, how it functions, and how to get started.
               </p>
             </div>
