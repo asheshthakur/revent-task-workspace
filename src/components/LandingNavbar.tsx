@@ -24,6 +24,7 @@ export const LandingNavbar: React.FC = () => {
             <Link href="#product" className="hover:text-white transition-colors">Product</Link>
             <Link href="#features" className="hover:text-white transition-colors">Features</Link>
             <Link href="#how-it-works" className="hover:text-white transition-colors">How it Works</Link>
+            <Link href="#faq" className="hover:text-white transition-colors">FAQ</Link>
             <Link href="/download" className="hover:text-indigo-400 transition-colors flex items-center space-x-1">
               <Monitor className="w-3.5 h-3.5" />
               <span>Download</span>
@@ -85,6 +86,13 @@ export const LandingNavbar: React.FC = () => {
               className="px-2 py-1.5 hover:text-white transition-colors"
             >
               How it Works
+            </Link>
+            <Link
+              href="#faq"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-2 py-1.5 hover:text-white transition-colors"
+            >
+              FAQ
             </Link>
             <Link
               href="/download"

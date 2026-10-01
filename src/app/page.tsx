@@ -19,16 +19,16 @@ import {
   CheckSquare, 
   Clock, 
   Link2,
-  Sparkles,
   ChevronRight,
-  Menu,
-  X
+  HelpCircle
 } from 'lucide-react';
 import { LandingNavbar } from '@/components/LandingNavbar';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'VEYA | Team Workspace for Tasks, Collaboration & Work Management',
-  description: 'VEYA is the modern team workspace for distributed organizations. Assign tasks, track progress, collaborate in real-time, and manage finance in one unified platform.',
+  description: 'VEYA is a unified team workspace designed for distributed teams to assign tasks, collaborate in real time, monitor project status, and track operational finance.',
   alternates: {
     canonical: 'https://app.lucidmediax.in/',
   },
@@ -41,14 +41,20 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'VEYA | Team Workspace for Tasks & Collaboration',
+    title: 'VEYA | Team Workspace for Tasks, Collaboration & Work Management',
     description: 'One workspace for the work that matters. Organize tasks, collaborate, and track visibility across your team.',
   },
 };
 
 export default async function HomePage() {
   // If user is already authenticated in this browser session, seamlessly route to dashboard
-  const user = await getCurrentUser();
+  let user = null;
+  try {
+    user = await getCurrentUser();
+  } catch {
+    user = null;
+  }
+
   if (user) {
     redirect('/dashboard');
   }
@@ -62,7 +68,7 @@ export default async function HomePage() {
         name: 'VEYA',
         url: 'https://app.lucidmediax.in',
         logo: 'https://app.lucidmediax.in/favicon.ico',
-        description: 'Enterprise work and task management SaaS platform.',
+        description: 'Unified team workspace platform for task management, team chat, live presence, and operational finance.',
       },
       {
         '@type': 'WebSite',
@@ -75,14 +81,68 @@ export default async function HomePage() {
         '@type': 'SoftwareApplication',
         name: 'VEYA Work Management',
         applicationCategory: 'BusinessApplication',
-        operatingSystem: 'Web, macOS, Windows 11',
+        operatingSystem: 'Web, macOS Monterey 12.0+, Windows 11 x64',
         offers: {
           '@type': 'Offer',
           price: '0.00',
           priceCurrency: 'USD',
         },
-      }
-    ]
+      },
+      {
+        '@type': 'FAQPage',
+        '@id': 'https://app.lucidmediax.in/#faq',
+        mainEntity: [
+          {
+            '@type': 'Question',
+            name: 'What is VEYA?',
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: 'VEYA is a unified team workspace designed to organize tasks, real-time discussions, teammate presence, work links, and operational finance in a single fast platform without scattered tools.',
+            },
+          },
+          {
+            '@type': 'Question',
+            name: 'Who is VEYA for?',
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: 'VEYA is built for founders, team leads, employees, and growing agencies who need direct task accountability, clear project deadlines, and live operational visibility across their team.',
+            },
+          },
+          {
+            '@type': 'Question',
+            name: 'How does VEYA help teams manage tasks?',
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: 'Every task in VEYA has a single accountable assignee, structured lifecycle stages (Not Started, Started, Half-way, Completed), direct external work links (Google Drive, Docs, Figma), and dedicated task discussion threads.',
+            },
+          },
+          {
+            '@type': 'Question',
+            name: 'Can teams collaborate and chat in real-time?',
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: 'Yes. VEYA includes built-in one-on-one direct messages and departmental group channels with unread message badges and live status presence (Online, Away, DND, Holiday).',
+            },
+          },
+          {
+            '@type': 'Question',
+            name: 'Can I use VEYA on macOS and Windows desktop?',
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: 'Yes. VEYA provides dedicated native desktop applications for macOS (Apple Silicon M1/M2/M3/M4 & Intel) and Windows 11 x64 featuring OS-native notifications and system dock/taskbar badges.',
+            },
+          },
+          {
+            '@type': 'Question',
+            name: 'How do I create a VEYA workspace?',
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: 'Click Sign Up to register your account, name your workspace, choose your URL slug, and instantly invite teammates with shareable role-based invite links.',
+            },
+          },
+        ],
+      },
+    ],
   };
 
   return (
@@ -109,9 +169,9 @@ export default async function HomePage() {
               {/* Badge */}
               <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-medium text-slate-300 shadow-inner">
                 <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-indigo-300 font-semibold">VEYA 2.0</span>
+                <span className="text-indigo-300 font-semibold">VEYA Workspace</span>
                 <span className="text-slate-500">|</span>
-                <span>The Independent Team Workspace</span>
+                <span>The Unified Team Operating System</span>
               </div>
 
               {/* Headline */}
@@ -121,11 +181,11 @@ export default async function HomePage() {
 
               {/* Value Statement */}
               <p className="text-base sm:text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto">
-                VEYA brings tasks, teams, communication, workflows, and work visibility into one workspace. Organize responsibilities and stay aligned without the chaos of scattered tools.
+                VEYA brings tasks, team discussions, workflows, and operational visibility into one workspace. Organize team responsibilities and stay aligned without the chaos of fragmented apps.
               </p>
 
               {/* CTAs */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
                 <Link
                   href="/signup"
                   className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-7 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/25 transition-all transform hover:-translate-y-0.5"
@@ -143,20 +203,20 @@ export default async function HomePage() {
               </div>
 
               {/* Desktop App Link */}
-              <div className="pt-2">
+              <div className="pt-3">
                 <Link
                   href="/download"
                   className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-indigo-400 transition-colors"
                 >
                   <Monitor className="w-3.5 h-3.5" />
-                  <span>Available on macOS & Windows 11</span>
+                  <span>Available on macOS (Apple Silicon & Intel) & Windows 11</span>
                   <ChevronRight className="w-3 h-3" />
                 </Link>
               </div>
             </div>
 
             {/* HERO PRODUCT MOCKUP */}
-            <div className="mt-14 sm:mt-20 max-w-5xl mx-auto">
+            <div className="mt-16 sm:mt-24 max-w-5xl mx-auto">
               <div className="relative rounded-2xl sm:rounded-3xl p-2 sm:p-3 bg-gradient-to-b from-slate-800/80 via-slate-900/60 to-slate-950 border border-slate-800 shadow-2xl backdrop-blur-xs">
                 {/* Browser Frame Window Header */}
                 <div className="rounded-xl sm:rounded-2xl bg-slate-900/90 border border-slate-800 overflow-hidden shadow-2xl">
@@ -310,27 +370,27 @@ export default async function HomePage() {
         {/* ========================================== */}
         {/* 2. VALUE PROPOSITION STRIP                 */}
         {/* ========================================== */}
-        <section className="py-12 bg-slate-950 border-b border-slate-900">
+        <section className="py-16 bg-slate-950 border-b border-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <p className="text-center text-xs font-bold uppercase tracking-wider text-slate-500 mb-8">
+            <p className="text-center text-xs font-bold uppercase tracking-wider text-slate-500 mb-10">
               Everything your team needs to move work forward
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-              <div className="space-y-1">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+              <div className="space-y-2">
                 <div className="text-sm font-bold text-white">Clear Task Ownership</div>
-                <div className="text-xs text-slate-400">Assign, track, and complete work with context.</div>
+                <div className="text-xs text-slate-400 leading-relaxed">Assign, track, and complete work with context.</div>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <div className="text-sm font-bold text-white">Connected Context</div>
-                <div className="text-xs text-slate-400">Keep discussion threads right beside tasks.</div>
+                <div className="text-xs text-slate-400 leading-relaxed">Keep discussion threads right beside tasks.</div>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <div className="text-sm font-bold text-white">Total Visibility</div>
-                <div className="text-xs text-slate-400">Live teammate presence and audit logs.</div>
+                <div className="text-xs text-slate-400 leading-relaxed">Live teammate presence and audit logs.</div>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <div className="text-sm font-bold text-white">Work Anywhere</div>
-                <div className="text-xs text-slate-400">Accessible on web and dedicated desktop app.</div>
+                <div className="text-xs text-slate-400 leading-relaxed">Accessible on web and dedicated desktop app.</div>
               </div>
             </div>
           </div>
@@ -339,13 +399,13 @@ export default async function HomePage() {
         {/* ========================================== */}
         {/* 3. WHAT IS VEYA?                           */}
         {/* ========================================== */}
-        <section id="product" className="py-20 sm:py-28 bg-slate-900/40 border-b border-slate-900">
+        <section id="product" className="py-24 sm:py-32 bg-slate-900/40 border-b border-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center space-y-4 mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3 py-1 rounded-full border border-indigo-800/60">
+            <div className="max-w-3xl mx-auto text-center mb-20">
+              <span className="inline-block text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3.5 py-1.5 rounded-full border border-indigo-800/60 mb-6">
                 The Platform
               </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-6">
                 One workspace for the work that matters.
               </h2>
               <p className="text-base text-slate-400 leading-relaxed">
@@ -390,16 +450,16 @@ export default async function HomePage() {
         {/* ========================================== */}
         {/* 4. CORE FEATURES                           */}
         {/* ========================================== */}
-        <section id="features" className="py-20 sm:py-28 bg-slate-950 border-b border-slate-900">
+        <section id="features" className="py-24 sm:py-32 bg-slate-950 border-b border-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center space-y-4 mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3 py-1 rounded-full border border-indigo-800/60">
+            <div className="max-w-3xl mx-auto text-center mb-20">
+              <span className="inline-block text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3.5 py-1.5 rounded-full border border-indigo-800/60 mb-6">
                 Capabilities
               </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-6">
                 Engineered for speed, clarity, and accountability.
               </h2>
-              <p className="text-base text-slate-400">
+              <p className="text-base text-slate-400 leading-relaxed">
                 Built on Cloudflare serverless edge infrastructure with zero cold-start delay and real-time synchronization.
               </p>
             </div>
@@ -471,15 +531,18 @@ export default async function HomePage() {
         {/* ========================================== */}
         {/* 5. HOW IT WORKS                            */}
         {/* ========================================== */}
-        <section id="how-it-works" className="py-20 sm:py-28 bg-slate-900/40 border-b border-slate-900">
+        <section id="how-it-works" className="py-24 sm:py-32 bg-slate-900/40 border-b border-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center space-y-4 mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3 py-1 rounded-full border border-indigo-800/60">
+            <div className="max-w-3xl mx-auto text-center mb-20">
+              <span className="inline-block text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3.5 py-1.5 rounded-full border border-indigo-800/60 mb-6">
                 Simple Adoption
               </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-6">
                 How VEYA works in 3 steps
               </h2>
+              <p className="text-base text-slate-400 leading-relaxed">
+                Get up and running in minutes with no complex migration or onboarding required.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -513,15 +576,18 @@ export default async function HomePage() {
         {/* ========================================== */}
         {/* 6. WHO IS VEYA FOR?                        */}
         {/* ========================================== */}
-        <section className="py-20 sm:py-28 bg-slate-950 border-b border-slate-900">
+        <section className="py-24 sm:py-32 bg-slate-950 border-b border-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center space-y-4 mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3 py-1 rounded-full border border-indigo-800/60">
+            <div className="max-w-3xl mx-auto text-center mb-20">
+              <span className="inline-block text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3.5 py-1.5 rounded-full border border-indigo-800/60 mb-6">
                 Tailored for Focus
               </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-6">
                 Designed for teams that value execution.
               </h2>
+              <p className="text-base text-slate-400 leading-relaxed">
+                Whether you run a 5-person agency or a multi-department team, VEYA adapts to your structure.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -559,7 +625,7 @@ export default async function HomePage() {
         {/* ========================================== */}
         {/* 7. DESKTOP EXPERIENCE CALLOUT              */}
         {/* ========================================== */}
-        <section className="py-20 bg-slate-900/60 border-b border-slate-900">
+        <section className="py-24 bg-slate-900/60 border-b border-slate-900">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="rounded-3xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-purple-950/80 border border-indigo-800/40 p-8 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl">
               <div className="space-y-4 max-w-xl text-center md:text-left">
@@ -589,18 +655,99 @@ export default async function HomePage() {
         </section>
 
         {/* ========================================== */}
-        {/* 8. FINAL CONVERSION SECTION                */}
+        {/* 8. FREQUENTLY ASKED QUESTIONS (AEO / FAQ)  */}
         {/* ========================================== */}
-        <section className="py-20 sm:py-28 bg-slate-950 relative overflow-hidden">
+        <section id="faq" className="py-24 sm:py-32 bg-slate-950 border-b border-slate-900">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-3xl mx-auto text-center mb-16">
+              <span className="inline-block text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950/80 px-3.5 py-1.5 rounded-full border border-indigo-800/60 mb-6">
+                Frequently Asked Questions
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-4">
+                Everything you need to know about VEYA
+              </h2>
+              <p className="text-base text-slate-400">
+                Clear, direct answers on what VEYA is, how it functions, and how to get started.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <div className="flex items-center space-x-2 text-indigo-400">
+                  <HelpCircle className="w-4 h-4 shrink-0" />
+                  <h3 className="text-base font-bold text-white">What is VEYA?</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                  VEYA is a unified team workspace designed to organize tasks, real-time discussions, teammate presence, work links, and operational finance in a single fast platform without scattered tools.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <div className="flex items-center space-x-2 text-indigo-400">
+                  <HelpCircle className="w-4 h-4 shrink-0" />
+                  <h3 className="text-base font-bold text-white">Who is VEYA for?</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                  VEYA is built for founders, team leads, employees, and growing agencies who need direct task accountability, clear project deadlines, and live operational visibility across their team.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <div className="flex items-center space-x-2 text-indigo-400">
+                  <HelpCircle className="w-4 h-4 shrink-0" />
+                  <h3 className="text-base font-bold text-white">How does VEYA help teams manage tasks?</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                  Every task in VEYA has a single accountable assignee, structured lifecycle stages (Not Started, Started, Half-way, Completed), direct external work links (Google Drive, Docs, Figma), and dedicated task discussion threads.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <div className="flex items-center space-x-2 text-indigo-400">
+                  <HelpCircle className="w-4 h-4 shrink-0" />
+                  <h3 className="text-base font-bold text-white">Can teams collaborate in real-time?</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                  Yes. VEYA includes built-in one-on-one direct messages and departmental group channels with unread message badges and live status presence (Online, Away, DND, Holiday).
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <div className="flex items-center space-x-2 text-indigo-400">
+                  <HelpCircle className="w-4 h-4 shrink-0" />
+                  <h3 className="text-base font-bold text-white">Can I use VEYA on desktop?</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                  Yes. VEYA provides dedicated native desktop applications for macOS (Apple Silicon M1/M2/M3/M4 & Intel) and Windows 11 x64 featuring OS-native notifications and system dock/taskbar badges.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <div className="flex items-center space-x-2 text-indigo-400">
+                  <HelpCircle className="w-4 h-4 shrink-0" />
+                  <h3 className="text-base font-bold text-white">How do I create a VEYA workspace?</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                  Click Sign Up to register your account, name your workspace, choose your URL slug, and instantly invite teammates with shareable role-based invite links.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================== */}
+        {/* 9. FINAL CONVERSION SECTION                */}
+        {/* ========================================== */}
+        <section className="py-24 sm:py-32 bg-slate-950 relative overflow-hidden">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
             <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
               Bring your team’s work into one place.
             </h2>
-            <p className="text-base text-slate-400 max-w-xl mx-auto">
+            <p className="text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
               Create your VEYA workspace today and start organizing work with your team with zero clutter.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-6">
               <Link
                 href="/signup"
                 className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 transition-all"
@@ -620,7 +767,7 @@ export default async function HomePage() {
       </main>
 
       {/* ========================================== */}
-      {/* 9. FOOTER                                  */}
+      {/* 10. FOOTER                                 */}
       {/* ========================================== */}
       <footer className="border-t border-slate-900 bg-slate-950 py-12 text-slate-500 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -634,6 +781,7 @@ export default async function HomePage() {
             <Link href="#product" className="hover:text-slate-300 transition-colors">Product</Link>
             <Link href="#features" className="hover:text-slate-300 transition-colors">Features</Link>
             <Link href="#how-it-works" className="hover:text-slate-300 transition-colors">How it Works</Link>
+            <Link href="#faq" className="hover:text-slate-300 transition-colors">FAQ</Link>
             <Link href="/download" className="hover:text-slate-300 transition-colors">Download</Link>
             <Link href="/login" className="hover:text-slate-300 transition-colors">Log In</Link>
             <Link href="/signup" className="hover:text-slate-300 transition-colors">Sign Up</Link>

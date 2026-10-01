@@ -4,9 +4,11 @@
 User-agent: *
 Allow: /$
 Allow: /download
+Allow: /downloads/
 Allow: /login
 Allow: /signup
 Allow: /sitemap.xml
+Allow: /llms.txt
 
 Disallow: /dashboard
 Disallow: /my-tasks

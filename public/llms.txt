@@ -1,0 +1,18 @@
+# VEYA
+
+> VEYA is a unified team workspace designed for distributed organizations. It brings task management, contextual team chat, real-time presence indicators, work link attachments, and operational finance into one platform.
+
+## Overview
+- Website: https://app.lucidmediax.in/
+- Native Desktop Client: https://app.lucidmediax.in/download
+- Sign Up: https://app.lucidmediax.in/signup
+- Login: https://app.lucidmediax.in/login
+
+## Core Capabilities
+- **Task & Sprint Lifecycle**: Tasks with 4 defined states (Not Started, Started, Half-way, Completed), direct assignee responsibility, deadlines, and priorities.
+- **External Work Links**: Direct attachments for Google Drive, Figma, Docs, and spreadsheets on every task.
+- **Live Team Presence**: Real-time heartbeat presence tracking (Online, Away, DND, Holiday).
+- **Internal Messaging**: 1-on-1 direct messages and departmental channels with unread badge synchronization.
+- **Operational Finance**: Integrated client directory, invoice generation, PDC tracking, and payment receipts.
+- **Multi-Tenant Workspaces**: Instant switching between isolated organizations and role-based permissions (Owner, Admin, Member).
+- **Native Desktop Applications**: Dedicated clients for macOS (Apple Silicon M1/M2/M3/M4 & Intel) and Windows 11 x64.

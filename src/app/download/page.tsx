@@ -105,7 +105,16 @@ export default function DownloadPage() {
           <div className="relative rounded-3xl bg-slate-900/90 border border-slate-800 p-8 sm:p-10 flex flex-col justify-between hover:border-slate-700 transition-all shadow-xl group">
             <div className="space-y-6">
               <div className="w-14 h-14 rounded-2xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-white shadow-inner group-hover:scale-105 transition-transform">
-                <Apple className="w-7 h-7" />
+                {/* Authentic Apple Platform Icon */}
+                <svg
+                  className="w-7 h-7 fill-current"
+                  viewBox="0 0 170 170"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-label="Apple macOS"
+                >
+                  <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.04-7.67-7.81-11.94-14.3-5.74-8.7-10.33-18.77-13.77-30.2-3.44-11.44-5.16-22.37-5.16-32.8 0-14.12 3.4-26.04 10.2-35.75 6.8-9.71 15.43-14.65 25.88-14.82 4.9 0 10.42 1.34 16.55 4.02 6.13 2.68 10.02 4.07 11.66 4.17 1.83 0 5.86-1.47 12.09-4.4 6.23-2.93 11.73-4.27 16.5-4.02 12.02.63 21.64 5.34 28.86 14.13-10.49 6.35-15.62 15.11-15.39 26.27.24 8.79 3.61 16.14 10.12 22.04 6.51 5.9 14.28 9.32 23.3 10.27-2.24 6.84-4.85 13.88-7.84 21.12zM119.22 31.84c0-7.39 2.69-14.29 8.07-20.7 5.38-6.41 12-10.46 19.86-12.14.23 1.25.35 2.45.35 3.6 0 7.39-2.73 14.37-8.19 20.93-5.46 6.56-12.14 10.51-20.04 11.85-.05-1.19-.05-2.37-.05-3.54z" />
+                </svg>
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-white">VEYA for Mac</h2>
@@ -117,7 +126,7 @@ export default function DownloadPage() {
               <div className="space-y-2.5 pt-2 text-xs text-slate-300">
                 <div className="flex items-center space-x-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Compatible with macOS 12+ (Apple Silicon & Intel)</span>
+                  <span>Compatible with macOS Monterey 12.0 or newer</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -125,23 +134,30 @@ export default function DownloadPage() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Automatic background updates & zero cold-start</span>
+                  <span>Zero cold-start edge synchronization</span>
                 </div>
               </div>
             </div>
 
             <div className="pt-8 mt-6 border-t border-slate-800/80 space-y-3">
-              <a
-                href="https://github.com/asheshthakur/revent-task-workspace/releases/latest"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full inline-flex items-center justify-center space-x-2 py-3 px-5 rounded-xl bg-white text-slate-950 font-bold text-sm hover:bg-slate-200 transition-colors shadow-md"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download for macOS (.dmg)</span>
-              </a>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <a
+                  href="/api/download/mac-arm64"
+                  className="flex-1 inline-flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-colors shadow-md"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Apple Silicon (M1/M2/M3/M4)</span>
+                </a>
+                <a
+                  href="/api/download/mac-intel"
+                  className="inline-flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-colors shadow-md"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Intel Mac</span>
+                </a>
+              </div>
               <p className="text-center text-[11px] text-slate-500">
-                Requires macOS Monterey 12.0 or newer
+                Direct DMG download • 64-bit architecture
               </p>
             </div>
           </div>
@@ -150,7 +166,16 @@ export default function DownloadPage() {
           <div className="relative rounded-3xl bg-slate-900/90 border border-slate-800 p-8 sm:p-10 flex flex-col justify-between hover:border-slate-700 transition-all shadow-xl group">
             <div className="space-y-6">
               <div className="w-14 h-14 rounded-2xl bg-indigo-950/80 border border-indigo-800/80 flex items-center justify-center text-indigo-400 shadow-inner group-hover:scale-105 transition-transform">
-                <Monitor className="w-7 h-7" />
+                {/* Crisp Windows 11 Platform Icon */}
+                <svg
+                  className="w-7 h-7 fill-current text-indigo-400"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-label="Microsoft Windows"
+                >
+                  <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-13.051-1.802" />
+                </svg>
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-white">VEYA for Windows</h2>
@@ -177,16 +202,14 @@ export default function DownloadPage() {
 
             <div className="pt-8 mt-6 border-t border-slate-800/80 space-y-3">
               <a
-                href="https://github.com/asheshthakur/revent-task-workspace/releases/latest"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/api/download/windows-x64"
                 className="w-full inline-flex items-center justify-center space-x-2 py-3 px-5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-600/20"
               >
                 <Download className="w-4 h-4" />
                 <span>Download for Windows (.exe)</span>
               </a>
               <p className="text-center text-[11px] text-slate-500">
-                Supports Windows 11 x64 (Standalone & NSIS installer)
+                Supports Windows 11 • x64 NSIS Installer
               </p>
             </div>
           </div>
@@ -232,8 +255,8 @@ export default function DownloadPage() {
         <div className="text-center pt-8 border-t border-slate-900">
           <p className="text-sm text-slate-400">
             Prefer working directly in your browser?{' '}
-            <Link href="/login" className="text-indigo-400 hover:text-indigo-300 font-semibold inline-flex items-center space-x-1">
-              <span>Open VEYA for Web</span>
+            <Link href="/" className="text-indigo-400 hover:text-indigo-300 font-semibold inline-flex items-center space-x-1">
+              <span>Prefer the browser? Open VEYA</span>
               <ArrowRight className="w-3.5 h-3.5 ml-1" />
             </Link>
           </p>
