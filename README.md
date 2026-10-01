@@ -2,8 +2,9 @@
 
 **VEYA** is a multi-tenant enterprise task, finance, and operational work management SaaS platform engineered for modern teams and distributed organizations.
 
-- **Canonical Application URL**: [https://app.veya.com](https://app.veya.com)
+- **Canonical Application URL**: [https://app.lucidmediax.in](https://app.lucidmediax.in) (or [https://app.veya.com](https://app.veya.com))
 - **Production Workers.dev Fallback**: [https://revent-task-workspace.revent-workspace.workers.dev/](https://revent-task-workspace.revent-workspace.workers.dev/)
+- **Marketing / Parent Website**: [https://www.lucidmediax.in/](https://www.lucidmediax.in/) (Preserved on WordPress.com)
 - **Default / Initial Workspace**: Revent (`revent`)
 - **Hosting & Infrastructure**: Cloudflare Workers + Cloudflare D1 (Zero Mandatory Monthly Cost architecture, serverless edge with zero cold-start spin-down).
 

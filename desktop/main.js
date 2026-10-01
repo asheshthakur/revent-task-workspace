@@ -3,8 +3,8 @@ const path = require('path');
 
 // Determine target server URL:
 // In development, you can run VEYA_URL=http://localhost:3000 npm start
-// In production, defaults to the canonical VEYA application URL or live fallback
-const TARGET_URL = process.env.VEYA_URL || process.env.REVENT_URL || 'https://app.veya.com';
+// In production, connects to canonical VEYA app.lucidmediax.in or live fallback
+const TARGET_URL = process.env.VEYA_URL || process.env.REVENT_URL || 'https://app.lucidmediax.in';
 const FALLBACK_URL = 'https://revent-task-workspace.revent-workspace.workers.dev';
 
 let mainWindow = null;

@@ -160,8 +160,13 @@ export async function getTenantContext(): Promise<TenantContext | null> {
     const host = reqHeaders.get('x-forwarded-host') || reqHeaders.get('host') || '';
     const cleanHost = host.split(':')[0].toLowerCase();
 
-    // Check if host is a subdomain of veya.com or custom domain (excluding root & workers.dev)
-    if (cleanHost.endsWith('.veya.com')) {
+    // Check if host is a subdomain of lucidmediax.in or veya.com (excluding root, www & app)
+    if (cleanHost.endsWith('.lucidmediax.in')) {
+      const sub = cleanHost.replace('.lucidmediax.in', '').trim();
+      if (sub && sub !== 'www' && sub !== 'app') {
+        activeOrg = allOrgs.find((o) => o.slug.toLowerCase() === sub);
+      }
+    } else if (cleanHost.endsWith('.veya.com')) {
       const sub = cleanHost.replace('.veya.com', '').trim();
       if (sub && sub !== 'www' && sub !== 'app') {
         activeOrg = allOrgs.find((o) => o.slug.toLowerCase() === sub);
