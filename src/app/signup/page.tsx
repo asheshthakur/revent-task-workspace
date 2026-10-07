@@ -10,12 +10,19 @@ export default function SignUpPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!termsAccepted) {
+      setError('Please agree to the VEYA Terms of Service and acknowledge the Privacy Policy to proceed.');
+      return;
+    }
+
     setLoading(true);
 
     if (password.length < 6) {
@@ -32,6 +39,7 @@ export default function SignUpPage() {
           name: name.trim(),
           email: email.trim(),
           password,
+          termsAccepted: true,
         }),
       });
 
@@ -119,6 +127,28 @@ export default function SignUpPage() {
                 />
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
               </div>
+            </div>
+
+            <div className="pt-1">
+              <label className="flex items-start space-x-2.5 text-xs text-slate-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  required
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 shrink-0 cursor-pointer"
+                />
+                <span>
+                  I agree to the{' '}
+                  <Link href="/legal/terms" target="_blank" className="font-semibold text-indigo-600 hover:underline">
+                    Terms of Service
+                  </Link>{' '}
+                  and acknowledge the{' '}
+                  <Link href="/legal/privacy" target="_blank" className="font-semibold text-indigo-600 hover:underline">
+                    Privacy Policy
+                  </Link>.
+                </span>
+              </label>
             </div>
 
             <button

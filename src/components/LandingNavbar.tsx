@@ -21,10 +21,11 @@ export const LandingNavbar: React.FC = () => {
 
           {/* Desktop Nav Links */}
           <nav className="hidden md:flex items-center space-x-6 text-xs font-semibold text-slate-300">
-            <Link href="#product" className="hover:text-white transition-colors">Product</Link>
-            <Link href="#features" className="hover:text-white transition-colors">Features</Link>
-            <Link href="#how-it-works" className="hover:text-white transition-colors">How it Works</Link>
-            <Link href="#faq" className="hover:text-white transition-colors">FAQ</Link>
+            <Link href="/#product" className="hover:text-white transition-colors">Product</Link>
+            <Link href="/#features" className="hover:text-white transition-colors">Features</Link>
+            <Link href="/#how-it-works" className="hover:text-white transition-colors">How it Works</Link>
+            <Link href="/pricing" className="hover:text-indigo-400 transition-colors">Pricing</Link>
+            <Link href="/legal/terms" className="hover:text-white transition-colors">Legal</Link>
             <Link href="/download" className="hover:text-indigo-400 transition-colors flex items-center space-x-1">
               <Monitor className="w-3.5 h-3.5" />
               <span>Download</span>
@@ -88,11 +89,25 @@ export const LandingNavbar: React.FC = () => {
               How it Works
             </Link>
             <Link
-              href="#faq"
+              href="/#faq"
               onClick={() => setMobileMenuOpen(false)}
               className="px-2 py-1.5 hover:text-white transition-colors"
             >
               FAQ
+            </Link>
+            <Link
+              href="/pricing"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-2 py-1.5 text-indigo-400 hover:text-indigo-300 transition-colors"
+            >
+              Pricing
+            </Link>
+            <Link
+              href="/legal/terms"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-2 py-1.5 hover:text-white transition-colors"
+            >
+              Legal & Compliance
             </Link>
             <Link
               href="/download"

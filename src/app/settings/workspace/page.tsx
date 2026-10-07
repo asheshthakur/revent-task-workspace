@@ -4,13 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2, Users, Mail, Shield, UserPlus, Trash2, CheckCircle2, AlertCircle, Loader2, Globe, Copy, Check } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
+import { CommercialWorkspaceCard } from '@/components/legal/CommercialWorkspaceCard';
 
 interface WorkspaceMember {
   membership_id: number;
   user_id: number;
   name: string;
   email: string;
-  role: 'owner' | 'admin' | 'member';
+  role: 'owner' | 'admin' | 'manager' | 'member' | 'guest';
   department: string;
   joined_at: string;
   animal_emoji: string;
@@ -27,11 +28,16 @@ export default function WorkspaceSettingsPage() {
 
   // Invite modal / state
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
+  const [inviteRole, setInviteRole] = useState<'admin' | 'manager' | 'member' | 'guest'>('member');
   const [isInviting, setIsInviting] = useState(false);
   const [inviteResult, setInviteResult] = useState<{ url: string; token: string } | null>(null);
   const [inviteError, setInviteError] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Owner transfer modal state
+  const [transferTargetUser, setTransferTargetUser] = useState<WorkspaceMember | null>(null);
+  const [transferConfirmText, setTransferConfirmText] = useState('');
+  const [isTransferring, setIsTransferring] = useState(false);
 
   // Role update state
   const [actionError, setActionError] = useState('');
@@ -109,7 +115,7 @@ export default function WorkspaceSettingsPage() {
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleRoleChange = async (targetUserId: number, newRole: 'admin' | 'member') => {
+  const handleRoleChange = async (targetUserId: number, newRole: 'admin' | 'manager' | 'member' | 'guest') => {
     setActionError('');
     setActionSuccess('');
 
@@ -131,6 +137,43 @@ export default function WorkspaceSettingsPage() {
       );
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err.message : 'Failed to update role');
+    }
+  };
+
+  const handleTransferOwnership = async () => {
+    if (!transferTargetUser) return;
+    if (transferConfirmText !== 'TRANSFER') {
+      setActionError('Please type TRANSFER to confirm ownership transfer');
+      return;
+    }
+
+    setIsTransferring(true);
+    setActionError('');
+    setActionSuccess('');
+
+    try {
+      const res = await fetch('/api/workspaces/members', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'transfer_owner',
+          targetUserId: transferTargetUser.user_id,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to transfer ownership');
+      }
+
+      setActionSuccess(`Ownership successfully transferred to ${transferTargetUser.name}. You are now an Admin.`);
+      setTransferTargetUser(null);
+      setTransferConfirmText('');
+      await loadData();
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to transfer ownership');
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -227,6 +270,11 @@ export default function WorkspaceSettingsPage() {
           </div>
         </div>
 
+        {/* Commercial Plan & Legal Compliance Card */}
+        {isWorkspaceAdmin && (
+          <CommercialWorkspaceCard activeOrg={activeOrg} currentUser={currentUser} />
+        )}
+
         {/* Invite Teammates (Admins only) */}
         {isWorkspaceAdmin && (
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4">
@@ -285,7 +333,9 @@ export default function WorkspaceSettingsPage() {
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium bg-white focus:outline-hidden"
                 >
                   <option value="member">Role: Member</option>
+                  <option value="manager">Role: Manager</option>
                   <option value="admin">Role: Admin</option>
+                  <option value="guest">Role: Guest</option>
                 </select>
               </div>
 
@@ -340,7 +390,9 @@ export default function WorkspaceSettingsPage() {
                       onChange={(e) => handleRoleChange(m.user_id, e.target.value as any)}
                       className="text-xs font-semibold px-2 py-1 rounded bg-slate-50 border border-slate-300 text-slate-700 cursor-pointer"
                     >
+                      <option value="guest">Guest</option>
                       <option value="member">Member</option>
+                      <option value="manager">Manager</option>
                       <option value="admin">Admin</option>
                     </select>
                   ) : (
@@ -350,11 +402,27 @@ export default function WorkspaceSettingsPage() {
                           ? 'bg-purple-100 text-purple-700'
                           : m.role === 'admin'
                           ? 'bg-amber-100 text-amber-700'
+                          : m.role === 'manager'
+                          ? 'bg-blue-100 text-blue-700'
+                          : m.role === 'guest'
+                          ? 'bg-slate-100 text-slate-600'
                           : 'bg-indigo-100 text-indigo-700'
                       }`}
                     >
                       {m.role}
                     </span>
+                  )}
+
+                  {/* Transfer Ownership Button (Owner only, for other members) */}
+                  {activeOrg.is_owner && m.user_id !== currentUser.id && (
+                    <button
+                      type="button"
+                      onClick={() => setTransferTargetUser(m)}
+                      className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded text-[11px] font-medium transition-colors cursor-pointer"
+                      title="Transfer workspace ownership"
+                    >
+                      Transfer Owner
+                    </button>
                   )}
 
                   {/* Remove Member */}
@@ -373,6 +441,60 @@ export default function WorkspaceSettingsPage() {
             ))}
           </div>
         </div>
+
+        {/* Transfer Ownership Confirmation Modal */}
+        {transferTargetUser && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+              <div className="flex items-center space-x-3 text-red-600">
+                <AlertCircle className="w-6 h-6 shrink-0" />
+                <h3 className="text-base font-bold text-slate-900">Transfer Workspace Ownership</h3>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                You are about to transfer ownership of <strong>{activeOrg.name}</strong> to{' '}
+                <strong>{transferTargetUser.name}</strong> ({transferTargetUser.email}).
+                <br /><br />
+                Once transferred, you will become an <strong>Admin</strong>. Only the new owner will be able to transfer ownership back or delete the workspace.
+              </p>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 block">
+                  Type <span className="font-mono text-red-600 font-bold">TRANSFER</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={transferConfirmText}
+                  onChange={(e) => setTransferConfirmText(e.target.value)}
+                  placeholder="TRANSFER"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-red-500 focus:outline-hidden"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTransferTargetUser(null);
+                    setTransferConfirmText('');
+                  }}
+                  className="px-3.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={transferConfirmText !== 'TRANSFER' || isTransferring}
+                  onClick={handleTransferOwnership}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center space-x-1.5"
+                >
+                  {isTransferring && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Confirm Transfer</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );
