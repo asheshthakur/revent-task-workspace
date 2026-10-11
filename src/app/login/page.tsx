@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Lock, Mail, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { PublicAuthLayout } from '@/components/PublicAuthLayout';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -37,17 +38,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-900">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-2">
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-wider">
-          VEYA
-        </h2>
-        <p className="text-sm text-slate-400">
-          Enter your organization credentials to sign in
-        </p>
-      </div>
+    <PublicAuthLayout>
+      <div className="w-full max-w-md mx-auto">
+        <div className="text-center space-y-2 mb-8">
+          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-wider">
+            VEYA
+          </h1>
+          <p className="text-sm text-slate-400">
+            Enter your organization credentials to sign in
+          </p>
+        </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-6 sm:px-10 shadow-2xl rounded-2xl border border-slate-800/10 space-y-6">
           {error && (
             <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-start space-x-2">
@@ -75,9 +76,17 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Password
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   type="password"
@@ -132,6 +141,6 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-    </div>
+    </PublicAuthLayout>
   );
 }

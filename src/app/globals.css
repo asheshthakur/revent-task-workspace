@@ -47,6 +47,18 @@ body {
   display: block !important;
 }
 
+@media (min-width: 48rem) {
+  .md\:flex {
+    display: flex !important;
+  }
+  .md\:hidden {
+    display: none !important;
+  }
+  .md\:block {
+    display: block !important;
+  }
+}
+
 @media (min-width: 64rem) {
   .lg\:block {
     display: block !important;
@@ -67,5 +79,6 @@ body {
     width: 18rem !important;
   }
 }
+
 
 

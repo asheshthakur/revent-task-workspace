@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { UserPlus, CheckCircle2, ShieldCheck, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { PublicAuthLayout } from '@/components/PublicAuthLayout';
 
 interface InvitationInfo {
   valid: boolean;
@@ -74,8 +75,8 @@ export default function AcceptInvitationPage() {
         return;
       }
 
-      // Success -> Redirect to dashboard in new active workspace
-      window.location.href = '/dashboard';
+      // Success -> Redirect to designated landing in new active workspace
+      window.location.href = data.redirectUrl || '/dashboard';
     } catch {
       setError('A network error occurred. Please try again.');
       setSubmitting(false);
@@ -84,19 +85,19 @@ export default function AcceptInvitationPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
+      <PublicAuthLayout>
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
           <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
           <p className="text-sm text-slate-400">Verifying invitation link...</p>
         </div>
-      </div>
+      </PublicAuthLayout>
     );
   }
 
   if (error && !invitation) {
     return (
-      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
-        <div className="bg-slate-800 p-8 rounded-2xl max-w-md w-full border border-slate-700 text-center">
+      <PublicAuthLayout>
+        <div className="max-w-md w-full mx-auto bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center">
           <div className="w-12 h-12 rounded-full bg-rose-950/80 border border-rose-800 text-rose-400 flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-6 h-6" />
           </div>
@@ -109,26 +110,26 @@ export default function AcceptInvitationPage() {
             Return to Login
           </Link>
         </div>
-      </div>
+      </PublicAuthLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 shadow-xl mb-4">
-          <UserPlus className="w-8 h-8 text-white" />
+    <PublicAuthLayout>
+      <div className="w-full max-w-lg mx-auto">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 shadow-xl mb-4">
+            <UserPlus className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            Join {invitation?.organisationName}
+          </h1>
+          <p className="mt-2 text-sm text-slate-400">
+            <span className="font-semibold text-slate-200">{invitation?.invitedByName}</span> invited you to join the{' '}
+            <span className="font-semibold text-indigo-300 capitalize">{invitation?.role}</span> team.
+          </p>
         </div>
-        <h2 className="text-3xl font-extrabold text-white tracking-tight">
-          Join {invitation?.organisationName}
-        </h2>
-        <p className="mt-2 text-sm text-slate-400">
-          <span className="font-semibold text-slate-200">{invitation?.invitedByName}</span> invited you to join the{' '}
-          <span className="font-semibold text-indigo-300 capitalize">{invitation?.role}</span> team.
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg">
         <div className="bg-slate-800/90 py-8 px-6 shadow-2xl rounded-2xl sm:px-10 border border-slate-700/60 backdrop-blur-md">
           {error && (
             <div className="mb-6 p-4 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-sm font-medium">
@@ -191,6 +192,6 @@ export default function AcceptInvitationPage() {
           </form>
         </div>
       </div>
-    </div>
+    </PublicAuthLayout>
   );
 }

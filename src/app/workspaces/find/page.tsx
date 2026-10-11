@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search, Building2, Plus, ArrowRight, Loader2, KeyRound } from 'lucide-react';
+import { PublicAuthLayout } from '@/components/PublicAuthLayout';
 
 interface WorkspaceItem {
   id: number;
@@ -60,17 +61,18 @@ export default function FindWorkspacePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-2">
-        <h2 className="text-3xl font-extrabold text-white tracking-tight">
-          Welcome to VEYA
-        </h2>
-        <p className="text-sm text-slate-400">
-          Find your company workspace or create a new one to get started.
-        </p>
-      </div>
+    <PublicAuthLayout>
+      <div className="w-full max-w-lg mx-auto">
+        <div className="text-center space-y-2 mb-8">
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            Welcome to VEYA
+          </h1>
+          <p className="text-sm text-slate-400">
+            Find your company workspace or create a new one to get started.
+          </p>
+        </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg space-y-6">
+        <div className="space-y-6">
         {/* Search Workspace Card */}
         <div className="bg-slate-800/90 py-7 px-6 shadow-2xl rounded-2xl border border-slate-700/60 backdrop-blur-md space-y-5">
           <div>
@@ -174,6 +176,7 @@ export default function FindWorkspacePage() {
           </Link>
         </div>
       </div>
-    </div>
+      </div>
+    </PublicAuthLayout>
   );
 }

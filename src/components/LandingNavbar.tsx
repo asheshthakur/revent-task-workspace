@@ -68,21 +68,21 @@ export const LandingNavbar: React.FC = () => {
         <div className="md:hidden border-b border-slate-800 bg-slate-950 px-4 py-5 space-y-4">
           <nav className="flex flex-col space-y-3 text-sm font-semibold text-slate-300">
             <Link
-              href="#product"
+              href="/#product"
               onClick={() => setMobileMenuOpen(false)}
               className="px-2 py-1.5 hover:text-white transition-colors"
             >
               Product
             </Link>
             <Link
-              href="#features"
+              href="/#features"
               onClick={() => setMobileMenuOpen(false)}
               className="px-2 py-1.5 hover:text-white transition-colors"
             >
               Features
             </Link>
             <Link
-              href="#how-it-works"
+              href="/#how-it-works"
               onClick={() => setMobileMenuOpen(false)}
               className="px-2 py-1.5 hover:text-white transition-colors"
             >

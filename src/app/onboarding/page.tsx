@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Building2, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { PublicAuthLayout } from '@/components/PublicAuthLayout';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -56,20 +57,20 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 shadow-xl mb-4">
-          <Building2 className="w-8 h-8 text-white" />
+    <PublicAuthLayout>
+      <div className="w-full max-w-lg mx-auto">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 shadow-xl mb-4">
+            <Building2 className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            Create your VEYA Workspace
+          </h1>
+          <p className="mt-2 text-sm text-slate-400">
+            Set up a dedicated, isolated workspace for your organization.
+          </p>
         </div>
-        <h2 className="text-3xl font-extrabold text-white tracking-tight">
-          Create your VEYA Workspace
-        </h2>
-        <p className="mt-2 text-sm text-slate-400">
-          Set up a dedicated, isolated workspace for your organization.
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg">
         <div className="bg-slate-800/90 py-8 px-6 shadow-2xl rounded-2xl sm:px-10 border border-slate-700/60 backdrop-blur-md">
           {error && (
             <div className="mb-6 p-4 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-sm font-medium">
@@ -174,6 +175,6 @@ export default function OnboardingPage() {
           </div>
         </div>
       </div>
-    </div>
+    </PublicAuthLayout>
   );
 }

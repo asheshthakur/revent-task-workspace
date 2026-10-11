@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, User, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { PublicAuthLayout } from '@/components/PublicAuthLayout';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -58,17 +59,17 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-900">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-2">
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-wider">
-          VEYA
-        </h2>
-        <p className="text-sm text-slate-400">
-          Create your personal VEYA account
-        </p>
-      </div>
+    <PublicAuthLayout>
+      <div className="w-full max-w-md mx-auto">
+        <div className="text-center space-y-2 mb-8">
+          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-wider">
+            VEYA
+          </h1>
+          <p className="text-sm text-slate-400">
+            Create your personal VEYA account
+          </p>
+        </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-6 sm:px-10 shadow-2xl rounded-2xl border border-slate-800/10 space-y-6">
           {error && (
             <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-start space-x-2">
@@ -183,6 +184,6 @@ export default function SignUpPage() {
           </div>
         </div>
       </div>
-    </div>
+    </PublicAuthLayout>
   );
 }
