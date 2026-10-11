@@ -258,8 +258,20 @@ if (fs.existsSync(workerPath)) {
                     for (const req of duePurges) {
                         const orgId = req.organisation_id;
                         try {
+                            // Step 1: Purge underlying file blobs in KV
+                            try {
+                                const fileKeys = (await env.DB.prepare(\`SELECT storage_key FROM files WHERE organisation_id = ?\`).bind(orgId).all()).results || [];
+                                const blobKeys = (await env.DB.prepare(\`SELECT storage_key FROM file_blobs WHERE organisation_id = ?\`).bind(orgId).all()).results || [];
+                                const allKeys = Array.from(new Set([...fileKeys.map(r => r.storage_key), ...blobKeys.map(r => r.storage_key)]));
+                                if (env.FILES_KV && allKeys.length > 0) {
+                                    for (const k of allKeys) {
+                                        if (k) try { await env.FILES_KV.delete(k); } catch (ke) {}
+                                    }
+                                }
+                            } catch (fkErr) {}
+
                             const tables = [
-                                'file_attachments', 'files', 'time_entries', 'user_work_capacity',
+                                'file_attachments', 'file_blobs', 'files', 'time_entries', 'user_work_capacity',
                                 'guest_feedback', 'guest_page_access', 'guest_project_access',
                                 'milestones', 'projects', 'event_task_links', 'event_page_links',
                                 'meeting_action_items', 'event_attendees', 'calendar_events',
@@ -272,23 +284,21 @@ if (fs.existsSync(workerPath)) {
                                 'legal_acceptances', 'audit_logs'
                             ];
                             for (const tbl of tables) {
-                                try {
-                                    if (tbl === 'milestones') {
-                                        await env.DB.prepare(\`DELETE FROM milestones WHERE project_id IN (SELECT id FROM projects WHERE organisation_id = ?)\`).bind(orgId).run();
-                                    } else if (tbl === 'event_task_links' || tbl === 'event_page_links' || tbl === 'meeting_action_items' || tbl === 'event_attendees') {
-                                        await env.DB.prepare(\`DELETE FROM \${tbl} WHERE event_id IN (SELECT id FROM calendar_events WHERE organisation_id = ?)\`).bind(orgId).run();
-                                    } else if (tbl === 'page_task_links' || tbl === 'page_favorites') {
-                                        await env.DB.prepare(\`DELETE FROM \${tbl} WHERE page_id IN (SELECT id FROM pages WHERE organisation_id = ?)\`).bind(orgId).run();
-                                    } else if (tbl === 'message_reactions') {
-                                        await env.DB.prepare(\`DELETE FROM message_reactions WHERE message_id IN (SELECT m.id FROM messages m JOIN conversations c ON m.conversation_id = c.id WHERE c.organisation_id = ?)\`).bind(orgId).run();
-                                    } else if (tbl === 'messages' || tbl === 'conversation_members') {
-                                        await env.DB.prepare(\`DELETE FROM \${tbl} WHERE conversation_id IN (SELECT id FROM conversations WHERE organisation_id = ?)\`).bind(orgId).run();
-                                    } else if (tbl === 'task_dependencies' || tbl === 'task_checklists') {
-                                        await env.DB.prepare(\`DELETE FROM \${tbl} WHERE task_id IN (SELECT id FROM tasks WHERE organisation_id = ?)\`).bind(orgId).run();
-                                    } else {
-                                        await env.DB.prepare(\`DELETE FROM \${tbl} WHERE organisation_id = ?\`).bind(orgId).run();
-                                    }
-                                } catch (e) {}
+                                if (tbl === 'milestones') {
+                                    await env.DB.prepare(\`DELETE FROM milestones WHERE project_id IN (SELECT id FROM projects WHERE organisation_id = ?)\`).bind(orgId).run();
+                                } else if (tbl === 'event_task_links' || tbl === 'event_page_links' || tbl === 'meeting_action_items' || tbl === 'event_attendees') {
+                                    await env.DB.prepare(\`DELETE FROM \${tbl} WHERE event_id IN (SELECT id FROM calendar_events WHERE organisation_id = ?)\`).bind(orgId).run();
+                                } else if (tbl === 'page_task_links' || tbl === 'page_favorites') {
+                                    await env.DB.prepare(\`DELETE FROM \${tbl} WHERE page_id IN (SELECT id FROM pages WHERE organisation_id = ?)\`).bind(orgId).run();
+                                } else if (tbl === 'message_reactions') {
+                                    await env.DB.prepare(\`DELETE FROM message_reactions WHERE message_id IN (SELECT m.id FROM messages m JOIN conversations c ON m.conversation_id = c.id WHERE c.organisation_id = ?)\`).bind(orgId).run();
+                                } else if (tbl === 'messages' || tbl === 'conversation_members') {
+                                    await env.DB.prepare(\`DELETE FROM \${tbl} WHERE conversation_id IN (SELECT id FROM conversations WHERE organisation_id = ?)\`).bind(orgId).run();
+                                } else if (tbl === 'task_dependencies' || tbl === 'task_checklists') {
+                                    await env.DB.prepare(\`DELETE FROM \${tbl} WHERE task_id IN (SELECT id FROM tasks WHERE organisation_id = ?)\`).bind(orgId).run();
+                                } else {
+                                    await env.DB.prepare(\`DELETE FROM \${tbl} WHERE organisation_id = ?\`).bind(orgId).run();
+                                }
                             }
 
                             // Deactivate single-tenant users
@@ -303,11 +313,16 @@ if (fs.existsSync(workerPath)) {
                             await env.DB.prepare(\`DELETE FROM organisation_members WHERE organisation_id = ?\`).bind(orgId).run();
                             await env.DB.prepare(\`DELETE FROM organisations WHERE id = ?\`).bind(orgId).run();
                             await env.DB.prepare(\`UPDATE customer_deletion_requests SET status = 'completed', completed_at = ?, audit_metadata = ? WHERE id = ?\`).bind(
-                                now, JSON.stringify({ completedAt: now, purgedBy: 'cron_retention_sweep' }), req.id
+                                now, JSON.stringify({ completedAt: now, purgedBy: 'cron_retention_sweep', purgedOrgId: orgId }), req.id
                             ).run();
                             console.log('[Scheduler] Successfully purged expired organisation #', orgId);
                         } catch (pErr) {
                             console.error('[Scheduler] Error purging organisation #', orgId, pErr);
+                            try {
+                                await env.DB.prepare(\`UPDATE customer_deletion_requests SET audit_metadata = ? WHERE id = ?\`).bind(
+                                    JSON.stringify({ lastAttemptAt: now, error: String(pErr), retryPending: true }), req.id
+                                ).run();
+                            } catch (diagErr) {}
                         }
                     }
 

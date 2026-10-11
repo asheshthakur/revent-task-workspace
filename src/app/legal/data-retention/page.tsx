@@ -92,7 +92,24 @@ export default function DataRetentionPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">4. Submitting a Deletion Request</h2>
+          <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">4. Active Database Purge vs. Backup Lifecycle</h2>
+          <div className="space-y-2 text-xs text-slate-300">
+            <p>
+              When a workspace purge executes following the 30-day export grace period:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>
+                <strong>Active Database & Object Storage Purge:</strong> All organization-owned records across tasks, wiki pages, projects, messages, financial ledgers, and underlying file objects (Cloudflare KV and database blobs) are immediately and permanently deleted from active systems.
+              </li>
+              <li>
+                <strong>Disaster Recovery & Point-in-Time Backups:</strong> Point-in-time recovery copies (Cloudflare D1 Time Travel bookmarks) are maintained strictly for catastrophic disaster recovery for up to {ret.BACKUP_RETENTION_DAYS} days. These automated storage-tier snapshots expire and roll off naturally over the {ret.BACKUP_RETENTION_DAYS}-day window, after which all recovery copies are permanently and irreversibly destroyed.
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">5. Submitting a Deletion Request</h2>
           <p>
             Authorized Workspace Owners can initiate an organizational erasure request through Workspace Settings or by submitting a formal request to <a href={`mailto:${VEYA_LEGAL_CONFIG.PRIVACY_EMAIL}`} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.PRIVACY_EMAIL}</a> with proof of authority.
           </p>
