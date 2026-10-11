@@ -186,7 +186,7 @@ export const VEYA_LEGAL_CONFIG = {
   // Data Retention and Operational Lifecycles
   RETENTION_WINDOWS: {
     ACTIVE_WORKSPACE_DATA: 'Retained for active duration of customer organization subscription.',
-    SESSION_TOKEN_EXPIRY_DAYS: 30,
+    SESSION_TOKEN_EXPIRY_DAYS: 7, // 7 days JWT token & session cookie lifespan
     PASSWORD_RESET_TOKEN_EXPIRY_MINUTES: 30,
     AUDIT_LOG_RETENTION_DAYS: 365, // 1 year compliance audit log retention
     BACKUP_RETENTION_DAYS: 30, // Point-in-time database snapshot window
