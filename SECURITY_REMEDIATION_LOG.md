@@ -61,16 +61,19 @@ All verified issues have been resolved, tested, built, deployed, and verified ag
 
 ---
 
-### Remediation Entry 3: Active Database Purge vs. Backup Disaster Recovery Disclosure
+### Remediation Entry 3: Active Database Purge vs. 7-Day Free Plan D1 Time Travel Disclosure
 - **Finding ID:** SEC-FIND-07
 - **Severity:** Medium (Legal Accuracy & Recovery Transparency)
-- **Component:** `src/app/legal/data-retention/page.tsx`
+- **Component:** `src/app/legal/data-retention/page.tsx`, `src/lib/legalConfig.ts`
 - **Issue Description:**
-  The public policy did not explicitly distinguish between immediate active database/object storage deletion and Cloudflare D1 Time Travel point-in-time recovery bookmarks.
+  The public policy disclosure previously stated 30 days for database snapshot recovery, whereas Cloudflare Workers Free plan D1 Time Travel provides a rolling 7-day point-in-time recovery window. Furthermore, Cloudflare KV object deletion operates independently without Time Travel recovery.
 - **Remediation Implemented:**
-  Added Section 4 to `/legal/data-retention`:
-  - Active Database & Object Storage: Immediately and permanently deleted upon grace period expiry.
-  - Disaster Recovery Copies: Cloudflare D1 Time Travel snapshots roll off and expire naturally over a 30-day window (`BACKUP_RETENTION_DAYS: 30`), after which all recovery copies are permanently and irreversibly destroyed.
+  1. Updated `/legal/data-retention` Section 4 to disclose the accurate **7-day** D1 Time Travel recovery window for the Cloudflare Workers Free plan.
+  2. Clarified that historical database states in D1 remain recoverable for up to 7 days post-purge, after which they expire and roll off irreversibly.
+  3. Distinguished Cloudflare KV file object deletion: KV keys are deleted immediately and propagated via eventual consistency without a recovery window.
+  4. Incremented Data Retention Policy version to **1.2** with effective date 2026-10-11 in `src/lib/legalConfig.ts` and `LEGAL_CHANGELOG.md`.
+  5. Corrected `BACKUP_RETENTION_DAYS: 7` and added `D1_TIME_TRAVEL_RECOVERY_DAYS: 7` in `legalConfig.ts`.
+  6. Preserved the unchanged 30-day customer export grace period (`ORGANISATION_TERMINATION_GRACE_PERIOD_DAYS: 30`).
 - **Verification:**
   Verified on live production URL `https://app.lucidmediax.in/legal/data-retention`.
 

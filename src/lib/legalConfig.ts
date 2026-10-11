@@ -112,11 +112,11 @@ export const VEYA_LEGAL_CONFIG = {
     DATA_RETENTION: {
       type: 'DATA_RETENTION',
       title: 'Data Retention & Deletion Policy',
-      version: '1.1',
+      version: '1.2',
       effectiveDate: '2026-10-11',
       publishedDate: '2026-10-11',
       route: '/legal/data-retention',
-      summary: 'Details lifecycle timelines for active, archived, soft-deleted, and customer-requested hard deletion of workspace data.',
+      summary: 'Details lifecycle timelines for active, archived, soft-deleted, and customer-requested hard deletion of workspace data, distinguishing active database erasure, KV object removal, and the 7-day D1 Time Travel recovery window.',
     },
     SECURITY_OVERVIEW: {
       type: 'SECURITY_OVERVIEW',
@@ -189,9 +189,10 @@ export const VEYA_LEGAL_CONFIG = {
     SESSION_TOKEN_EXPIRY_DAYS: 7, // 7 days JWT token & session cookie lifespan
     PASSWORD_RESET_TOKEN_EXPIRY_MINUTES: 30,
     AUDIT_LOG_RETENTION_DAYS: 365, // 1 year compliance audit log retention
-    BACKUP_RETENTION_DAYS: 30, // Point-in-time database snapshot window
+    D1_TIME_TRAVEL_RECOVERY_DAYS: 7, // 7 days Cloudflare Workers Free plan D1 Time Travel recovery window
+    BACKUP_RETENTION_DAYS: 7, // 7 days Cloudflare D1 Time Travel recovery window (Free plan default)
     DEACTIVATED_USER_GRACE_PERIOD_DAYS: 90,
-    ORGANISATION_TERMINATION_GRACE_PERIOD_DAYS: 30, // Customer data export window following subscription termination
+    ORGANISATION_TERMINATION_GRACE_PERIOD_DAYS: 30, // Customer data export grace period before scheduled purge
     HARD_DELETION_PURGE_WINDOW_DAYS: 14, // Maximum window to purge soft-deleted customer data after retention period expires
   },
 

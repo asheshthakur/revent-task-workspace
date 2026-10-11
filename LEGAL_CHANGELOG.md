@@ -1,5 +1,23 @@
 # VEYA — Legal & Commercial Changelog
 
+## Version 1.2 (Effective Date: 2026-10-11)
+### Summary of Changes: Data Retention & D1 Time Travel Recovery Window Realignment
+
+1. **Cloudflare D1 Time Travel Recovery Window Correction**:
+   - Corrected the Cloudflare D1 disaster recovery window disclosure in the Data Retention & Deletion Policy from 30 days to **7 days**, accurately reflecting the Cloudflare Workers Free plan's Time Travel window.
+   - Clarified that historical database states in D1 may remain technically recoverable within this 7-day rolling window following a workspace purge.
+   - Avoided making claims of immediate irreversible erasure while historical states remain recoverable in D1 transaction bookmarks.
+   - Confirmed that recovery copies in D1 Time Travel naturally roll off and expire 7 days after a purge executes.
+
+2. **Cloudflare KV Physical Object Storage Distinction**:
+   - Clarified that binary file objects stored in Cloudflare KV (`FILES_KV`) and fallback database blobs (`file_blobs`) are deleted upon workspace purge via direct key deletion calls.
+   - Explicitly noted that Cloudflare KV operates independently from D1, does not support Time Travel, and does not inherit D1's recovery window; KV deletions propagate across edge data centers via eventual consistency without a recovery window.
+
+3. **Customer Export Grace Period Preserved**:
+   - Confirmed that the customer export grace period remains unchanged at **30 days** before the scheduled purge runs.
+
+---
+
 ## Version 1.1 (Effective Date: 2026-10-11)
 ### Summary of Changes: Indian Jurisdiction, Entity Realignment & Contact Centralization
 

@@ -72,7 +72,12 @@ export default function DataRetentionPage() {
                 <tr>
                   <td className="p-3 font-semibold text-white">Terminated Workspace Data Grace Period</td>
                   <td className="p-3 font-mono text-indigo-400">{ret.ORGANISATION_TERMINATION_GRACE_PERIOD_DAYS} Days</td>
-                  <td className="p-3">Admins can export complete datasets. Hard-purge occurs after grace period.</td>
+                  <td className="p-3">Admins retain full access to export complete datasets. Hard-purge occurs automatically after this 30-day export grace period.</td>
+                </tr>
+                <tr>
+                  <td className="p-3 font-semibold text-white">Cloudflare D1 Time Travel Recovery Window (Free Plan)</td>
+                  <td className="p-3 font-mono text-indigo-400">{ret.D1_TIME_TRAVEL_RECOVERY_DAYS} Days</td>
+                  <td className="p-3">Automated point-in-time disaster recovery window provided by Cloudflare D1 storage tier. Historical states roll off naturally 7 days post-purge.</td>
                 </tr>
               </tbody>
             </table>
@@ -92,17 +97,26 @@ export default function DataRetentionPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">4. Active Database Purge vs. Backup Lifecycle</h2>
+          <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">4. Active Database Purge vs. Backup Recovery Lifecycle</h2>
           <div className="space-y-2 text-xs text-slate-300">
             <p>
-              When a workspace purge executes following the 30-day export grace period:
+              To ensure absolute transparency regarding physical data erasure and disaster recovery capabilities:
             </p>
-            <ul className="list-disc pl-6 space-y-1">
+            <ul className="list-disc pl-6 space-y-2">
               <li>
-                <strong>Active Database & Object Storage Purge:</strong> All organization-owned records across tasks, wiki pages, projects, messages, financial ledgers, and underlying file objects (Cloudflare KV and database blobs) are immediately and permanently deleted from active systems.
+                <strong>Customer Export Grace Period (30 Days):</strong> When a Workspace Owner requests organizational deletion, the workspace enters a mandatory 30-day export grace period. During these 30 days, workspace administrators retain access to inspect and export all tasks, documents, and audit logs.
               </li>
               <li>
-                <strong>Disaster Recovery & Point-in-Time Backups:</strong> Point-in-time recovery copies (Cloudflare D1 Time Travel bookmarks) are maintained strictly for catastrophic disaster recovery for up to {ret.BACKUP_RETENTION_DAYS} days. These automated storage-tier snapshots expire and roll off naturally over the {ret.BACKUP_RETENTION_DAYS}-day window, after which all recovery copies are permanently and irreversibly destroyed.
+                <strong>Active Database Deletion:</strong> Once the 30-day grace period elapses, the automated retention sweep executes. All organization-owned records across tasks, wiki pages, projects, messages, financial ledgers, and audit histories are immediately and permanently removed from active relational database tables.
+              </li>
+              <li>
+                <strong>Cloudflare KV File Objects:</strong> Uploaded binary files stored in Cloudflare KV (`FILES_KV`) and fallback database blobs (`file_blobs`) are deleted directly during the retention sweep via key deletion calls. Cloudflare KV operates independently from D1 and does not have Time Travel or point-in-time recovery; once deleted, KV keys are tombstoned and purged across Cloudflare edge data centers via eventual consistency. They do not inherit D1's recovery window.
+              </li>
+              <li>
+                <strong>Cloudflare D1 Time Travel Recovery Window (7 Days):</strong> Cloudflare D1 provides automated point-in-time recovery (Time Travel) for catastrophic disaster recovery. On the Cloudflare Workers Free plan, D1 maintains transaction logs that allow restoring the database to historical states within a rolling <strong>7-day window</strong>. Historical database states may remain technically recoverable within this applicable 7-day window after a purge. We do not claim immediate irreversible erasure while historical states remain recoverable in D1 transaction bookmarks.
+              </li>
+              <li>
+                <strong>Recovery-Copy Expiration:</strong> Historical recovery copies in Cloudflare D1 naturally age out and expire <strong>7 days</strong> after the purge executes, as the rolling Time Travel window advances past the deletion timestamp, at which point all historical recovery copies are permanently and irreversibly destroyed.
               </li>
             </ul>
           </div>

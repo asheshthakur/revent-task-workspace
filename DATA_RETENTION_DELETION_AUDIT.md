@@ -45,10 +45,11 @@ When an organization is purged following expiration of the 30-day export grace p
 
 ### 3.2 Backup & Disaster Recovery Copies (Cloudflare D1 Time Travel)
 - **Time Travel Mechanism:** Cloudflare D1 provides automated point-in-time recovery (Time Travel) using transaction bookmarks (current bookmark verified: `00000122-00000000-00005101-2205b9f533168869483eefd03bc24b78`).
-- **Disaster Recovery Window:** Cloudflare retains Time Travel transaction history for up to **30 days** (`BACKUP_RETENTION_DAYS: 30`).
+- **Disaster Recovery Window (Free Plan):** On the Cloudflare Workers Free plan, Cloudflare retains Time Travel transaction history for **7 days** (`D1_TIME_TRAVEL_RECOVERY_DAYS: 7`, `BACKUP_RETENTION_DAYS: 7`).
+- **Cloudflare KV Object Independence:** Cloudflare KV (`FILES_KV`) does not support Time Travel or point-in-time recovery. File objects deleted from KV are tombstoned and propagated across edge locations via eventual consistency; they do not inherit D1's recovery window.
 - **Technical Limitation on Selective Deletion:** Storage-tier database transaction logs cannot be selectively modified or redacted per-tenant by application code without invalidating the entire database transaction chain.
-- **Natural Roll-Off:** Recovery bookmarks age out continuously as the rolling 30-day Time Travel window advances past the deletion timestamp, after which point all historical recovery copies are permanently and irreversibly destroyed.
-- **Policy Documentation:** Section 4 of `/legal/data-retention` explicitly discloses this operational distinction to customers.
+- **Natural Roll-Off (7 Days Post-Purge):** Recovery bookmarks age out continuously as the rolling 7-day Time Travel window advances past the deletion timestamp, after which point all historical recovery copies are permanently and irreversibly destroyed.
+- **Policy Documentation:** Section 4 of `/legal/data-retention` explicitly discloses this 7-day Free-plan operational distinction to customers.
 
 ---
 
