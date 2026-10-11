@@ -28,3 +28,44 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Authoritative 7-Column Layout for Calendar Header and Date Grid */
+.calendar-grid-7 {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+}
+
+.grid-cols-7 {
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+}
+
+/* Explicit Grid and Responsive Utilities to guarantee Tailwind v4 generation */
+.hidden {
+  display: none !important;
+}
+.block {
+  display: block !important;
+}
+
+@media (min-width: 64rem) {
+  .lg\:block {
+    display: block !important;
+  }
+  .lg\:hidden {
+    display: none !important;
+  }
+  .lg\:flex {
+    display: flex !important;
+  }
+  .lg\:flex-row {
+    flex-direction: row !important;
+  }
+  .lg\:w-64 {
+    width: 16rem !important;
+  }
+  .lg\:w-72 {
+    width: 18rem !important;
+  }
+}
+
+

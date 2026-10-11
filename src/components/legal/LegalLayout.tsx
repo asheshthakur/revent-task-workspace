@@ -116,10 +116,34 @@ export const LegalLayout: React.FC<LegalLayoutProps> = ({
       </section>
 
       {/* Main Content & Sidebar Layout */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex-1 w-full flex flex-col lg:flex-row items-start gap-8 lg:gap-12">
         {/* Navigation Sidebar */}
-        <aside className="lg:col-span-3 print:hidden">
-          <div className="sticky top-24 space-y-6">
+        <aside className="w-full lg:w-64 xl:w-72 shrink-0 print:hidden">
+          {/* Mobile Collapsible Legal Navigation */}
+          <div className="lg:hidden mb-4 p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
+            <label htmlFor="mobile-legal-nav" className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+              Legal Repository Navigation
+            </label>
+            <select
+              id="mobile-legal-nav"
+              value={pathname}
+              onChange={(e) => {
+                if (typeof window !== 'undefined' && e.target.value) {
+                  window.location.href = e.target.value;
+                }
+              }}
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-semibold text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+            >
+              {NAV_ITEMS.map((item) => (
+                <option key={item.href} value={item.href}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Desktop Sticky Sidebar */}
+          <div className="hidden lg:block sticky top-24 space-y-6">
             <div>
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">
                 Legal Repository
@@ -165,8 +189,8 @@ export const LegalLayout: React.FC<LegalLayoutProps> = ({
         </aside>
 
         {/* Document Body */}
-        <main className="lg:col-span-9 bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-10 shadow-xl print:p-0 print:border-none print:bg-transparent print:shadow-none">
-          <div className="prose prose-invert prose-indigo max-w-none text-slate-300 text-sm sm:text-base leading-relaxed space-y-8">
+        <main className="flex-1 min-w-0 w-full bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-10 lg:p-12 shadow-xl print:p-0 print:border-none print:bg-transparent print:shadow-none">
+          <div className="text-slate-300 text-[15px] sm:text-base leading-relaxed space-y-8">
             {children}
           </div>
 
