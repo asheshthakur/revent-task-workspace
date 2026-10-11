@@ -26,7 +26,6 @@ const NAV_ITEMS = [
   { href: '/legal/acceptable-use', label: 'Acceptable Use Policy', icon: Scale },
   { href: '/legal/data-retention', label: 'Data Retention & Deletion', icon: HardDriveDownload },
   { href: '/legal/security', label: 'Security & Privacy Architecture', icon: Server },
-  { href: '/legal/order-form', label: 'Subscription Order Form (Template)', icon: FileCheck },
 ];
 
 interface LegalLayoutProps {

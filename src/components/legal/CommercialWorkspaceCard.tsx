@@ -246,12 +246,12 @@ export const CommercialWorkspaceCard: React.FC<CommercialWorkspaceCardProps> = (
               <span>View All Plans</span>
               <ExternalLink className="w-3 h-3" />
             </Link>
-            <Link
-              href="/legal/order-form"
+            <a
+              href="mailto:info.lucidmediax@gmail.com?subject=Enterprise%20Contracting%20Inquiry"
               className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold text-xs transition-colors shadow-xs"
             >
               Enterprise Contracting
-            </Link>
+            </a>
           </div>
         </div>
       </div>

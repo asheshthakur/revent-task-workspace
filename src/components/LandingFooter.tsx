@@ -34,7 +34,6 @@ export const LandingFooter: React.FC = () => {
             <Link href="/legal/acceptable-use" className="hover:text-slate-400 transition-colors">Acceptable Use</Link>
             <Link href="/legal/data-retention" className="hover:text-slate-400 transition-colors">Data Retention</Link>
             <Link href="/legal/security" className="hover:text-slate-400 transition-colors">Security Architecture</Link>
-            <Link href="/legal/order-form" className="hover:text-slate-400 transition-colors">Order Form</Link>
           </div>
 
           <div className="shrink-0">

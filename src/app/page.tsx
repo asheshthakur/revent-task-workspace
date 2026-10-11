@@ -809,11 +809,10 @@ export default async function HomePage() {
               <Link href="/legal/acceptable-use" className="hover:text-slate-400 transition-colors">Acceptable Use</Link>
               <Link href="/legal/data-retention" className="hover:text-slate-400 transition-colors">Data Retention</Link>
               <Link href="/legal/security" className="hover:text-slate-400 transition-colors">Security Architecture</Link>
-              <Link href="/legal/order-form" className="hover:text-slate-400 transition-colors">Order Form</Link>
             </div>
 
             <div className="shrink-0">
-              © {new Date().getFullYear()} VEYA (Lucid Media). All rights reserved.
+              © {new Date().getFullYear()} VEYA (LucidMediax). All rights reserved.
             </div>
           </div>
         </div>

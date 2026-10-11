@@ -24,24 +24,24 @@ export default function PrivacyPolicyPage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">1. Introduction and Scope</h2>
           <p>
-            This Privacy Policy ("<strong>Privacy Policy</strong>") explains how <strong>{VEYA_LEGAL_CONFIG.LEGAL_ENTITY_NAME}</strong> (trading as <strong>{VEYA_LEGAL_CONFIG.TRADE_NAME}</strong>, hereinafter "<strong>Company</strong>", "<strong>we</strong>", "<strong>us</strong>", or "<strong>our</strong>") collects, uses, stores, discloses, and protects personal data when you interact with the {VEYA_LEGAL_CONFIG.PRODUCT_NAME} platform (<a href={VEYA_LEGAL_CONFIG.PRODUCTION_BASE_URL} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.PRODUCTION_DOMAIN}</a>), native desktop applications, and related services (collectively, the "<strong>Service</strong>").
+            This Privacy Policy ("<strong>Privacy Policy</strong>") explains how <strong>{VEYA_LEGAL_CONFIG.LEGAL_ENTITY_NAME}</strong> (trading as <strong>{VEYA_LEGAL_CONFIG.TRADE_NAME}</strong>, an {VEYA_LEGAL_CONFIG.LEGAL_FORM_DESCRIPTION}, hereinafter "<strong>Company</strong>", "<strong>we</strong>", "<strong>us</strong>", or "<strong>our</strong>") collects, uses, stores, discloses, and protects personal data when you interact with the {VEYA_LEGAL_CONFIG.PRODUCT_NAME} platform (<a href={VEYA_LEGAL_CONFIG.PRODUCTION_BASE_URL} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.PRODUCTION_DOMAIN}</a>), native desktop applications, and related services (collectively, the "<strong>Service</strong>").
           </p>
           <p>
-            We are committed to processing personal data responsibly, transparently, and in full compliance with applicable data protection laws, including <strong>UAE Federal Decree-Law No. 45 of 2021 on Personal Data Protection (PDPL)</strong> and other applicable regional privacy regulations.
+            We are committed to processing personal data responsibly, transparently, and in accordance with applicable Indian legislation, including the <strong>Digital Personal Data Protection Act, 2023 (DPDP Act)</strong>, the <strong>Digital Personal Data Protection Rules, 2025</strong> (as commenced in phases), and the <strong>Information Technology Act, 2000</strong> (including the Reasonable Security Practices and Procedures Rules, 2011 and Intermediary Guidelines).
           </p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">2. Roles: Data Controller vs. Data Processor</h2>
+          <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">2. Roles: Data Fiduciary vs. Data Processor</h2>
           <p>
             To understand your rights and our obligations under data protection laws, it is important to distinguish our operational roles:
           </p>
           <ul className="list-disc pl-6 space-y-2">
             <li>
-              <strong>When Company acts as Data Controller:</strong> We act as a Controller for personal data collected directly from account creators and website visitors for account provisioning, direct billing, platform security, and communications (such as user email, password hashes, billing contact details, and technical access logs).
+              <strong>When Company acts as Data Fiduciary:</strong> We act as a Data Fiduciary for personal data collected directly from account creators and website visitors for account provisioning, direct billing, platform security, and communications (such as user email, password hashes, billing contact details, and technical access logs).
             </li>
             <li>
-              <strong>When Company acts as Data Processor:</strong> For all Customer Content submitted into organizational workspaces by Authorized Users (including tasks, descriptions, internal messages, files, client notes, and employee workload allocations), the Customer Organization acts as the <strong>Data Controller</strong>, and Company acts strictly as a <strong>Data Processor</strong> carrying out processing in accordance with the Customer’s instructions and our <a href="/legal/dpa" className="text-indigo-400 hover:underline">Data Processing Agreement (DPA)</a>.
+              <strong>When Company acts as Data Processor:</strong> For all Customer Content submitted into organizational workspaces by Authorized Users (including tasks, descriptions, internal messages, files, client notes, and employee workload allocations), the Customer Organization acts as the <strong>Data Fiduciary (or Controller)</strong>, and Company acts strictly as a <strong>Data Processor</strong> carrying out processing in accordance with the Customer’s instructions and our <a href="/legal/dpa" className="text-indigo-400 hover:underline">Data Processing Agreement (DPA)</a>.
             </li>
           </ul>
         </section>
@@ -57,7 +57,7 @@ export default function PrivacyPolicyPage() {
                 <tr>
                   <th className="p-3 border-b border-slate-800">Category</th>
                   <th className="p-3 border-b border-slate-800">Data Elements Collected</th>
-                  <th className="p-3 border-b border-slate-800">Purpose & Lawful Basis (UAE PDPL)</th>
+                  <th className="p-3 border-b border-slate-800">Purpose & Lawful Basis</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-slate-300">
@@ -79,7 +79,7 @@ export default function PrivacyPolicyPage() {
                 <tr>
                   <td className="p-3 font-semibold text-white">Technical & Security Logs</td>
                   <td className="p-3">IP address, user agent, session tokens, audit log records (action type, actor user ID, affected entity, timestamp).</td>
-                  <td className="p-3">Legitimate interest in fraud prevention, infrastructure security, and legal compliance auditing.</td>
+                  <td className="p-3">Legitimate use and legal compliance in infrastructure security, fraud prevention, and audit logging.</td>
                 </tr>
                 <tr>
                   <td className="p-3 font-semibold text-white">Transactional Email</td>
@@ -116,10 +116,10 @@ export default function PrivacyPolicyPage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">5. Cross-Border Data Transfers</h2>
           <p>
-            VEYA utilizes Cloudflare’s globally distributed serverless edge infrastructure and Google Workspace transactional relay. While edge nodes process requests closest to the user (including in the United Arab Emirates and GCC region), data may be transmitted or replicated across secure international cloud datacenters.
+            VEYA utilizes Cloudflare’s globally distributed serverless edge infrastructure and Google Workspace transactional relay. Edge compute nodes process requests closest to the user (including across Asia, India, and global Edge Points of Presence), while data may be transmitted or replicated across secure international cloud datacenters.
           </p>
           <p>
-            In compliance with Articles 22 and 23 of the <strong>UAE Personal Data Protection Law (Federal Decree-Law No. 45 of 2021)</strong>, cross-border transfers are conducted subject to adequate data protection safeguards, contractual data processing agreements, and technical encryption controls.
+            Cross-border transfers are conducted in compliance with applicable Indian law (including Section 16 of the DPDP Act, 2023, subject to any negative lists notified by the Central Government) and supported by robust contractual and technical safeguards.
           </p>
         </section>
 
@@ -137,20 +137,18 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">7. Data Subject Rights under UAE PDPL</h2>
+          <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">7. Rights of Data Principals & Grievance Redressal</h2>
           <p>
-            Under the UAE Personal Data Protection Law, individuals residing in the UAE have statutory rights regarding their personal data, including:
+            In accordance with the Digital Personal Data Protection Act, 2023 and applicable Indian regulations, Data Principals have rights regarding their personal data:
           </p>
           <ul className="list-disc pl-6 space-y-2">
-            <li><strong>Right of Access:</strong> The right to obtain confirmation and a copy of personal data processed by us.</li>
-            <li><strong>Right to Rectification:</strong> The right to correct inaccurate, obsolete, or incomplete personal data.</li>
-            <li><strong>Right to Erasure (Right to be Forgotten):</strong> The right to request deletion of personal data when no longer necessary.</li>
-            <li><strong>Right to Restriction:</strong> The right to restrict processing under certain statutory grounds.</li>
-            <li><strong>Right to Data Portability:</strong> The right to receive personal data in a structured, commonly used machine-readable format (JSON/CSV).</li>
-            <li><strong>Right to Object:</strong> The right to object to processing where based on legitimate interests or direct marketing.</li>
+            <li><strong>Right to Access Information:</strong> Obtain a summary of personal data being processed and the identities of other data fiduciaries/processors with whom data has been shared.</li>
+            <li><strong>Right to Correction & Erasure:</strong> Request correction, completion, updating, or erasure of personal data that is no longer necessary for the purpose for which it was processed.</li>
+            <li><strong>Right of Grievance Redressal:</strong> Have readily available means of grievance redressal provided by the Data Fiduciary.</li>
+            <li><strong>Right to Nominate:</strong> Nominate another individual who shall exercise data principal rights in the event of death or incapacity.</li>
           </ul>
           <p>
-            To exercise these rights, please email our Data Protection team at <a href={`mailto:${VEYA_LEGAL_CONFIG.PRIVACY_EMAIL}`} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.PRIVACY_EMAIL}</a>. We respond to all verified statutory requests within thirty (30) calendar days.
+            To exercise these rights or file a grievance, please contact our designated Grievance Officer at <a href={`mailto:${VEYA_LEGAL_CONFIG.PRIVACY_EMAIL}`} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.PRIVACY_EMAIL}</a>. We respond to all verified statutory requests and grievances within the timelines mandated by applicable law.
           </p>
         </section>
 
@@ -162,15 +160,16 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">9. Contact and Supervisory Authority</h2>
+          <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">9. Contact and Grievance Officer</h2>
           <p>
-            If you have questions, concerns, or requests regarding this Privacy Policy or our data practices, please reach out to:
+            If you have questions, concerns, or grievances regarding this Privacy Policy or our data practices, please contact:
           </p>
           <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono space-y-1 text-slate-300">
-            <div><strong>Company:</strong> {VEYA_LEGAL_CONFIG.LEGAL_ENTITY_NAME}</div>
-            <div><strong>Data Privacy Office:</strong> <a href={`mailto:${VEYA_LEGAL_CONFIG.PRIVACY_EMAIL}`} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.PRIVACY_EMAIL}</a></div>
-            <div><strong>Data Protection Officer:</strong> <a href={`mailto:${VEYA_LEGAL_CONFIG.DPO_EMAIL}`} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.DPO_EMAIL}</a></div>
-            <div><strong>Supervisory Authority:</strong> UAE Data Office (established under Federal Decree-Law No. 44 of 2021)</div>
+            <div><strong>Enterprise:</strong> {VEYA_LEGAL_CONFIG.LEGAL_ENTITY_NAME}</div>
+            <div><strong>Registration:</strong> {VEYA_LEGAL_CONFIG.LEGAL_FORM_DESCRIPTION}</div>
+            <div><strong>Jurisdiction:</strong> {VEYA_LEGAL_CONFIG.JURISDICTION_COUNTRY}</div>
+            <div><strong>Grievance & Privacy Officer:</strong> <a href={`mailto:${VEYA_LEGAL_CONFIG.PRIVACY_EMAIL}`} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.PRIVACY_EMAIL}</a></div>
+            <div><strong>General Inquiries:</strong> <a href={`mailto:${VEYA_LEGAL_CONFIG.SUPPORT_EMAIL}`} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.SUPPORT_EMAIL}</a></div>
           </div>
         </section>
       </div>

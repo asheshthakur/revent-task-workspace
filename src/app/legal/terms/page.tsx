@@ -24,13 +24,13 @@ export default function TermsOfServicePage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">1. Agreement to Terms and Eligibility</h2>
           <p>
-            These Terms of Service ("<strong>Terms</strong>" or "<strong>Agreement</strong>") constitute a legally binding agreement between you (whether individually or on behalf of an entity that you represent, hereinafter "<strong>Customer</strong>", "<strong>you</strong>", or "<strong>your</strong>") and <strong>{VEYA_LEGAL_CONFIG.LEGAL_ENTITY_NAME}</strong> (trading as <strong>{VEYA_LEGAL_CONFIG.TRADE_NAME}</strong>, hereinafter "<strong>Company</strong>", "<strong>we</strong>", "<strong>us</strong>", or "<strong>our</strong>"), governing your access to and use of the {VEYA_LEGAL_CONFIG.PRODUCT_NAME} application, websites located at <a href={VEYA_LEGAL_CONFIG.PRODUCTION_BASE_URL} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.PRODUCTION_DOMAIN}</a>, native desktop applications, and associated services (collectively, the "<strong>Service</strong>" or "<strong>Platform</strong>").
+            These Terms of Service ("<strong>Terms</strong>" or "<strong>Agreement</strong>") constitute a legally binding agreement between you (whether individually or on behalf of an entity that you represent, hereinafter "<strong>Customer</strong>", "<strong>you</strong>", or "<strong>your</strong>") and <strong>{VEYA_LEGAL_CONFIG.LEGAL_ENTITY_NAME}</strong> (trading as <strong>{VEYA_LEGAL_CONFIG.TRADE_NAME}</strong>, an {VEYA_LEGAL_CONFIG.LEGAL_FORM_DESCRIPTION}, hereinafter "<strong>Company</strong>", "<strong>we</strong>", "<strong>us</strong>", or "<strong>our</strong>"), governing your access to and use of the {VEYA_LEGAL_CONFIG.PRODUCT_NAME} application, websites located at <a href={VEYA_LEGAL_CONFIG.PRODUCTION_BASE_URL} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.PRODUCTION_DOMAIN}</a>, native desktop applications, and associated services (collectively, the "<strong>Service</strong>" or "<strong>Platform</strong>").
           </p>
           <p>
-            By clicking "Create Account", "Sign Up", or otherwise registering for, accessing, or utilizing the Service, you acknowledge that you have read, understood, and agree to be bound by these Terms and our Privacy Policy. If you are entering into these Terms on behalf of a company, corporate enterprise, partnership, or other legal entity, you represent and warrant that you possess the full legal authority to bind such entity to these Terms. If you do not agree to these Terms, you must not access or use the Service.
+            By clicking "Create Account", "Sign Up", or otherwise registering for, accessing, or utilizing the Service, you acknowledge that you have read, understood, and agree to be bound by these Terms and our Privacy Policy. In accordance with <strong>Section 10A of the Information Technology Act, 2000</strong> and the <strong>Indian Contract Act, 1872</strong>, electronic contracts formed through digital acceptance are legally valid and enforceable. If you are entering into these Terms on behalf of a company, corporate enterprise, partnership, or other legal entity, you represent and warrant that you possess the full legal authority to bind such entity to these Terms. If you do not agree to these Terms, you must not access or use the Service.
           </p>
           <p>
-            The Service is intended solely for professional business-to-business (B2B) use by individuals who are at least eighteen (18) years of age and legally competent to enter into binding commercial contracts under applicable law.
+            The Service is intended primarily for professional business-to-business (B2B) use by organizations, businesses, and individuals who are at least eighteen (18) years of age and legally competent to enter into binding commercial contracts under applicable law.
           </p>
         </section>
 
@@ -68,13 +68,13 @@ export default function TermsOfServicePage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">4. Subscriptions, Fees, Invoicing, and Taxes</h2>
           <p>
-            <strong>Commercial Plans:</strong> Certain tiers of the Service are offered on a paid subscription basis (e.g. Team Pro, Business Operations, or Enterprise Custom) based on committed seat quantities and features described on our <a href="/pricing" className="text-indigo-400 hover:underline">Pricing Page</a> or agreed in an executed Master Subscription Order Form.
+            <strong>Commercial Plans:</strong> Certain tiers of the Service are offered on a paid subscription basis (e.g. Team Pro, Business Operations, or Enterprise Custom) based on committed seat quantities and features described on our <a href="/pricing" className="text-indigo-400 hover:underline">Pricing Page</a> or agreed in a signed commercial agreement.
           </p>
           <p>
-            <strong>Payment Terms:</strong> Unless otherwise specified in an Order Form, fees are payable in United States Dollars (USD) or United Arab Emirates Dirhams (AED) at the beginning of each billing interval (monthly or annual). For invoiced accounts, payment is due within thirty (30) calendar days from invoice issuance date.
+            <strong>Payment Terms:</strong> Fees are payable in United States Dollars (USD) or Indian Rupees (INR) at the beginning of each billing interval (monthly or annual). For invoiced accounts, payment is due within thirty (30) calendar days from invoice issuance date.
           </p>
           <p>
-            <strong>Taxes & Value Added Tax (VAT):</strong> All fees are exclusive of applicable indirect taxes. Where required by the laws of the United Arab Emirates (including Federal Decree-Law No. 8 of 2017 on Value Added Tax as amended), Company shall issue a valid Tax Invoice detailing applicable VAT (currently 5% standard rate where applicable), which Customer shall pay in full.
+            <strong>Taxes & Goods and Services Tax (GST):</strong> All fees are exclusive of applicable indirect taxes. Where applicable under Indian law (including the Central Goods and Services Tax Act, 2017 and Integrated Goods and Services Tax Act, 2017), taxes will be charged and invoiced in accordance with statutory regulations. Customers are responsible for providing accurate GSTIN details where claiming input tax credits.
           </p>
           <p>
             <strong>Renewals and Cancellations:</strong> Subscriptions renew automatically for successive periods matching the initial billing interval unless canceled by Customer’s Workspace Administrator prior to the renewal date. Cancellations take effect at the conclusion of the current paid billing cycle.
@@ -84,7 +84,7 @@ export default function TermsOfServicePage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">5. Data Privacy and Data Processing Agreement</h2>
           <p>
-            Our processing of personal data is governed by our <a href="/legal/privacy" className="text-indigo-400 hover:underline">Privacy Policy</a> and, for business customers processing personal data on behalf of individuals, our standard <a href="/legal/dpa" className="text-indigo-400 hover:underline">Data Processing Agreement (DPA)</a>. The DPA complies with the requirements of <strong>UAE Federal Decree-Law No. 45 of 2021 on Personal Data Protection (PDPL)</strong> and is incorporated into these Terms by reference.
+            Our processing of personal data is governed by our <a href="/legal/privacy" className="text-indigo-400 hover:underline">Privacy Policy</a> and, for business customers processing personal data on behalf of individuals, our standard <a href="/legal/dpa" className="text-indigo-400 hover:underline">Data Processing Agreement (DPA)</a>. The DPA complies with applicable Indian data protection legislation, including the <strong>Digital Personal Data Protection Act, 2023</strong> and the <strong>Information Technology Act, 2000</strong>, and is incorporated into these Terms by reference.
           </p>
         </section>
 
@@ -126,7 +126,7 @@ export default function TermsOfServicePage() {
             These Terms and any dispute or claim arising out of or in connection with them or their subject matter or formation shall be governed by and construed in accordance with the <strong>{VEYA_LEGAL_CONFIG.GOVERNING_LAW}</strong>.
           </p>
           <p>
-            Any dispute, controversy, or claim arising out of, relating to, or in connection with this contract, including any question regarding its existence, validity, interpretation, breach, or termination, shall be referred to and finally resolved by the <strong>{VEYA_LEGAL_CONFIG.DISPUTE_JURISDICTION}</strong>.
+            Any dispute, controversy, or claim arising out of, relating to, or in connection with this contract, including any question regarding its existence, validity, interpretation, breach, or termination, shall be referred to and finally resolved by the <strong>{VEYA_LEGAL_CONFIG.DISPUTE_JURISDICTION}</strong>. Nothing in this clause shall limit the right of either party to seek urgent injunctive or provisional equitable relief in any court of competent jurisdiction.
           </p>
         </section>
 
@@ -136,12 +136,13 @@ export default function TermsOfServicePage() {
             We may revise these Terms from time to time to reflect regulatory developments, new features, or updated commercial practices. In the event of material changes, we will provide advance notice through the Platform or via email to registered Workspace Administrators. Continued use of the Service following the effective date of revised Terms constitutes acceptance.
           </p>
           <p>
-            If you have questions regarding these Terms, please contact our legal department at:
+            If you have questions regarding these Terms, please contact our legal and business team at:
           </p>
           <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono space-y-1 text-slate-300">
             <div><strong>Entity:</strong> {VEYA_LEGAL_CONFIG.LEGAL_ENTITY_NAME}</div>
-            <div><strong>Address:</strong> {VEYA_LEGAL_CONFIG.REGISTERED_ADDRESS}</div>
-            <div><strong>Legal Inquiries:</strong> <a href={`mailto:${VEYA_LEGAL_CONFIG.LEGAL_EMAIL}`} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.LEGAL_EMAIL}</a></div>
+            <div><strong>Registration:</strong> {VEYA_LEGAL_CONFIG.LEGAL_FORM_DESCRIPTION}</div>
+            <div><strong>Jurisdiction:</strong> {VEYA_LEGAL_CONFIG.JURISDICTION_COUNTRY}</div>
+            <div><strong>Designated Contact Email:</strong> <a href={`mailto:${VEYA_LEGAL_CONFIG.LEGAL_EMAIL}`} className="text-indigo-400 hover:underline">{VEYA_LEGAL_CONFIG.LEGAL_EMAIL}</a></div>
           </div>
         </section>
       </div>

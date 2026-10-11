@@ -28,7 +28,7 @@ export default function DataRetentionPage() {
             This Data Retention & Deletion Policy outlines how {VEYA_LEGAL_CONFIG.PRODUCT_NAME} manages the operational lifecycle of workspace data, user accounts, system logs, and customer-requested erasures.
           </p>
           <p>
-            We adhere to the data minimization principle under Article 5 of the <strong>UAE Personal Data Protection Law (Federal Decree-Law No. 45 of 2021)</strong>: personal data is kept only as long as necessary for the purposes for which it is processed.
+            We adhere to data minimization principles under the <strong>Digital Personal Data Protection Act, 2023</strong>: personal data is kept only as long as necessary for the purposes for which it is processed.
           </p>
         </section>
 

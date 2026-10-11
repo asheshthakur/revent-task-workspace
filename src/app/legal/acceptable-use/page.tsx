@@ -47,7 +47,7 @@ export default function AcceptableUsePage() {
             <li>Is fraudulent, defamatory, harassing, threatening, hateful, or discriminatory.</li>
             <li>Infringes any patent, copyright, trademark, trade secret, or privacy right of any person or entity.</li>
             <li>Contains malware, computer viruses, ransomware, trojans, or malicious attachments.</li>
-            <li>Violates applicable laws or regulations of the United Arab Emirates or your local jurisdiction.</li>
+            <li>Violates applicable laws or regulations of India or your local jurisdiction.</li>
             <li>Discloses sensitive personal banking information, credit card numbers, or state secrets outside authorized commercial agreements.</li>
           </ul>
         </section>

@@ -24,7 +24,7 @@ export default function DpaPage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">1. Scope and Precedence</h2>
           <p>
-            This Data Processing Agreement ("<strong>DPA</strong>") supplements the VEYA Terms of Service ("<strong>Agreement</strong>") entered into between <strong>{VEYA_LEGAL_CONFIG.LEGAL_ENTITY_NAME}</strong> ("<strong>Data Processor</strong>" or "<strong>Company</strong>") and the customer organization ("<strong>Data Controller</strong>" or "<strong>Customer</strong>").
+            This Data Processing Agreement ("<strong>DPA</strong>") supplements the VEYA Terms of Service ("<strong>Agreement</strong>") entered into between <strong>{VEYA_LEGAL_CONFIG.LEGAL_ENTITY_NAME}</strong> (an {VEYA_LEGAL_CONFIG.LEGAL_FORM_DESCRIPTION}, hereinafter "<strong>Data Processor</strong>" or "<strong>Company</strong>") and the customer organization ("<strong>Data Controller</strong>" / "<strong>Data Fiduciary</strong>" or "<strong>Customer</strong>").
           </p>
           <p>
             This DPA applies to the extent that Company processes Personal Data on behalf of Customer in the course of providing the Service. In the event of any conflict between the terms of this DPA and the Agreement, the terms of this DPA shall govern with respect to the processing of Personal Data.
@@ -34,13 +34,13 @@ export default function DpaPage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">2. Processing Instructions and Obligations</h2>
           <p>
-            <strong>Documented Instructions:</strong> Processor shall process Personal Data exclusively on behalf of and in accordance with Controller's documented instructions, including with respect to transfers of Personal Data, unless required to do so by applicable laws of the United Arab Emirates.
+            <strong>Documented Instructions:</strong> Processor shall process Personal Data exclusively on behalf of and in accordance with Controller's documented instructions, including with respect to transfers of Personal Data, unless required to do so by applicable laws of India.
           </p>
           <p>
             <strong>Confidentiality of Personnel:</strong> Processor ensures that persons authorized to process the Personal Data have committed themselves to confidentiality or are under an appropriate statutory obligation of confidentiality.
           </p>
           <p>
-            <strong>Compliance Assistance:</strong> Processor shall assist Controller in ensuring compliance with the obligations pursuant to the <strong>UAE Federal Decree-Law No. 45 of 2021 on Personal Data Protection (PDPL)</strong>, taking into account the nature of processing and the information available to Processor.
+            <strong>Compliance Assistance:</strong> Processor shall assist Controller in ensuring compliance with the obligations pursuant to the <strong>Digital Personal Data Protection Act, 2023</strong> and applicable Indian data protection regulations, taking into account the nature of processing and the information available to Processor.
           </p>
         </section>
 
@@ -70,7 +70,7 @@ export default function DpaPage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold text-white border-b border-slate-800 pb-2">5. Return and Deletion of Personal Data</h2>
           <p>
-            Upon termination of the Service, Processor shall, at the choice of Controller, delete or return all Personal Data to Controller within thirty (30) calendar days, and delete existing copies unless applicable UAE or international law requires retention.
+            Upon termination of the Service, Processor shall, at the choice of Controller, delete or return all Personal Data to Controller within thirty (30) calendar days, and delete existing copies unless applicable Indian or mandatory international law requires retention.
           </p>
         </section>
 

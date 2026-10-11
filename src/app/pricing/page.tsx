@@ -129,29 +129,29 @@ export default function PricingPage() {
           </div>
         </section>
 
-        {/* Enterprise & UAE Compliance FAQ */}
+        {/* Enterprise & Commercial Compliance FAQ */}
         <section className="py-16 bg-slate-900/40 border-t border-slate-900">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
             <h2 className="text-2xl font-black text-white text-center">Commercial & Legal Contracting FAQ</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs text-slate-400">
               <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
-                <h3 className="font-bold text-white text-sm">Do you support UAE VAT invoices?</h3>
+                <h3 className="font-bold text-white text-sm">Do you support GST tax invoices?</h3>
                 <p>
-                  Yes. All UAE-domiciled corporate customers receive official Tax Invoices showing our legal entity details and Tax Registration Number (TRN) in accordance with UAE VAT laws.
+                  Yes. Where required under applicable Indian GST legislation (including CGST and IGST rules), customers receive valid tax invoices with appropriate GST breakdowns and input tax credit compliance.
                 </p>
               </div>
 
               <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
                 <h3 className="font-bold text-white text-sm">Can we sign an enterprise DPA?</h3>
                 <p>
-                  Yes. We offer standard and customized Data Processing Agreements aligned with UAE Federal Decree-Law No. 45 of 2021 on Personal Data Protection (PDPL). View our <Link href="/legal/dpa" className="text-indigo-400 hover:underline">standard DPA here</Link>.
+                  Yes. We offer standard and customized Data Processing Agreements aligned with the Digital Personal Data Protection Act, 2023 (DPDP Act) and applicable data protection regulations. View our <Link href="/legal/dpa" className="text-indigo-400 hover:underline">standard DPA here</Link>.
                 </p>
               </div>
 
               <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
                 <h3 className="font-bold text-white text-sm">What payment methods are supported?</h3>
                 <p>
-                  We accept corporate wire transfers and invoicing for annual plans, as well as electronic payment methods. Enterprise customers can execute formal Master Subscription Order Forms.
+                  We accept bank wire transfers, electronic payments, and invoicing for annual plans. Enterprise customers can execute customized commercial service agreements.
                 </p>
               </div>
 
