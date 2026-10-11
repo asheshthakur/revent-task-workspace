@@ -52,17 +52,27 @@ export default function PricingPage() {
                       : 'bg-slate-900/60 border border-slate-800 hover:border-slate-700'
                   }`}
                 >
-                  {plan.badge && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                      <span className="px-3 py-1 rounded-full bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-widest shadow-md">
-                        {plan.badge}
-                      </span>
-                    </div>
-                  )}
-
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                      {/* Badge slot: in-flow above heading to guarantee zero collision */}
+                      <div className="min-h-[28px] mb-3 flex items-center">
+                        {plan.badge ? (
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider text-center break-words ${
+                              isRecommended
+                                ? 'bg-indigo-500 text-white shadow-md shadow-indigo-600/30 ring-1 ring-indigo-400/40'
+                                : 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/50'
+                            }`}
+                          >
+                            {plan.badge}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-800/40 border border-slate-800">
+                            Base Tier
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-xl font-bold text-white tracking-tight break-words">{plan.name}</h3>
                       <p className="text-xs text-slate-400 mt-2 min-h-10 leading-relaxed">
                         {plan.description}
                       </p>
