@@ -19,6 +19,7 @@ import {
   UserCheck,
   MessageSquare,
   ChevronDown,
+  ChevronRight,
   DollarSign,
   Receipt,
   CreditCard,
@@ -26,23 +27,40 @@ import {
   Bell,
   Check,
   Building2,
+  Search,
+  Zap,
+  BookOpen,
+  Calendar,
+  FolderKanban,
+  Clock,
+  Gauge,
+  Boxes,
+  Sun,
+  Moon,
+  Laptop,
+  Share2,
 } from 'lucide-react';
 import { USER_PRESENCE_STATUSES, UserPresenceStatus } from '@/lib/constants';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
+import { GlobalSearchModal } from './GlobalSearchModal';
+import { GlobalTimerControl } from './GlobalTimerControl';
 
 interface AppLayoutProps {
-  user: {
+  user?: {
     id: number;
     name: string;
     email: string;
     role: 'admin' | 'employee';
+    workspaceRole?: 'owner' | 'admin' | 'manager' | 'member' | 'guest';
     department?: string;
     animal_emoji?: string;
     selected_status?: string;
     can_reset_other_user_passwords?: boolean;
-  };
+  } | null;
   children: React.ReactNode;
   onOpenCreateTask?: () => void;
+  fullWidth?: boolean;
+  noPadding?: boolean;
 }
 
 interface PresenceUser {
@@ -55,7 +73,107 @@ interface PresenceUser {
   is_online: boolean;
 }
 
-export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCreateTask }) => {
+interface DepartmentSectionProps {
+  title: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  items: Array<{
+    label: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: number | null;
+  }>;
+  currentPath: string;
+  onNavigate: () => void;
+}
+
+const DepartmentSection: React.FC<DepartmentSectionProps> = ({
+  title,
+  isOpen,
+  onToggle,
+  items,
+  currentPath,
+  onNavigate,
+}) => {
+  const isAnyChildActive = items.some((item) => currentPath === item.href);
+  const isExpanded = isOpen || isAnyChildActive;
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isExpanded}
+        className={`w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-md transition-colors cursor-pointer select-none ${
+          isAnyChildActive
+            ? 'text-indigo-300 bg-indigo-600/20'
+            : 'text-slate-400 hover:text-white hover:bg-slate-800'
+        }`}
+      >
+        <span className="flex items-center gap-1.5">
+          {title}
+        </span>
+        {isExpanded ? (
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400 transition-transform" />
+        ) : (
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400 transition-transform" />
+        )}
+      </button>
+
+      {isExpanded && (
+        <div className="space-y-0.5 pl-2">
+          {items.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentPath === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onNavigate}
+                className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  isActive
+                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 font-semibold'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center space-x-2.5 truncate">
+                  <Icon
+                    className={`w-3.5 h-3.5 shrink-0 ${
+                      isActive ? 'text-indigo-400' : 'text-slate-400'
+                    }`}
+                  />
+                  <span className="truncate">{item.label}</span>
+                </div>
+                {item.badge && item.badge > 0 ? (
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse shadow-xs">
+                    {item.badge > 99 ? '99+' : item.badge}
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const AppLayout: React.FC<AppLayoutProps> = ({
+  user: rawUser,
+  children,
+  onOpenCreateTask,
+  fullWidth = false,
+  noPadding = false,
+}) => {
+  const user = rawUser || {
+    id: 0,
+    name: 'Loading...',
+    email: '',
+    role: 'employee',
+    workspaceRole: 'member',
+    animal_emoji: '🦊',
+    selected_status: 'Online',
+  };
   const pathname = usePathname();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -69,21 +187,55 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
   const [mySelectedStatus, setMySelectedStatus] = useState<UserPresenceStatus>(
     (user.selected_status as UserPresenceStatus) || 'Online'
   );
-  const presenceScrollRef = useRef<HTMLDivElement>(null);
-
   // Notifications state
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState<number>(0);
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
 
-  const handlePresenceWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    const el = presenceScrollRef.current;
-    if (!el) return;
-    if (el.scrollHeight > el.clientHeight) {
-      el.scrollTop += e.deltaY;
+  // Global Search state
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Department collapse state in browser localStorage
+  const [openDepartments, setOpenDepartments] = useState<Record<string, boolean>>({
+    operations: true,
+    finance: true,
+  });
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('veya_sidebar_depts');
+      if (stored) {
+        setOpenDepartments((prev) => ({ ...prev, ...JSON.parse(stored) }));
+      }
+    } catch {
+      // LocalStorage not available or restricted
     }
+  }, []);
+
+  const toggleDepartment = (deptKey: string) => {
+    setOpenDepartments((prev) => {
+      const next = { ...prev, [deptKey]: !prev[deptKey] };
+      try {
+        localStorage.setItem('veya_sidebar_depts', JSON.stringify(next));
+      } catch {
+        // LocalStorage not available
+      }
+      return next;
+    });
   };
+
+  // Global Cmd+K keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Close dropdowns when clicking outside and register SW
   useEffect(() => {
@@ -275,90 +427,207 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
     }
   };
 
-  const navItems = [
+  const wRole = user.workspaceRole || (user.role === 'admin' ? 'admin' : 'member');
+  const isGuest = wRole === 'guest';
+  const canFinance = !isGuest && (wRole === 'owner' || wRole === 'admin');
+  const canAllTasks = !isGuest && (wRole === 'owner' || wRole === 'admin' || wRole === 'manager');
+  const canAutomations = !isGuest;
+  const canWorkspaceSettings = !isGuest && (wRole === 'owner' || wRole === 'admin');
+  const canAnalytics = !isGuest && (wRole === 'owner' || wRole === 'admin' || wRole === 'manager');
+  const canTeamDirectory = !isGuest;
+
+  const guestNavItems = [
     {
-      label: user.role === 'admin' ? 'Overview' : 'My Dashboard',
-      href: '/dashboard',
-      icon: LayoutDashboard,
+      label: 'Shared Projects',
+      href: '/client/projects',
+      icon: FolderKanban,
       show: true,
+      badge: null as number | null,
     },
     {
-      label: 'My Tasks',
-      href: '/my-tasks',
-      icon: CheckSquare,
-      show: user.role === 'employee',
-    },
-    {
-      label: 'Chat',
-      href: '/chat',
-      icon: MessageSquare,
-      badge: unreadChatCount > 0 ? unreadChatCount : null,
+      label: 'Shared Pages',
+      href: '/client/pages',
+      icon: BookOpen,
       show: true,
+      badge: null as number | null,
     },
-    {
-      label: 'Finance Overview',
-      href: '/finance',
-      icon: DollarSign,
-      show: true,
-    },
-    {
-      label: 'Invoice Tracker',
-      href: '/finance/invoices',
-      icon: Receipt,
-      show: true,
-    },
-    {
-      label: 'PDC Tracker',
-      href: '/finance/pdcs',
-      icon: FileCheck,
-      show: true,
-    },
-    {
-      label: 'Payments',
-      href: '/finance/payments',
-      icon: CreditCard,
-      show: true,
-    },
-    {
-      label: 'Clients',
-      href: '/finance/clients',
-      icon: Users,
-      show: true,
-    },
+  ];
+
+  const coreNavItems = isGuest
+    ? guestNavItems
+    : [
+        {
+          label: user.role === 'admin' ? 'Overview' : 'My Dashboard',
+          href: '/dashboard',
+          icon: LayoutDashboard,
+          show: true,
+        },
+        {
+          label: 'My Tasks',
+          href: '/my-tasks',
+          icon: CheckSquare,
+          show: user.role === 'employee' || wRole === 'manager',
+        },
+        {
+          label: 'Chat',
+          href: '/chat',
+          icon: MessageSquare,
+          badge: unreadChatCount > 0 ? unreadChatCount : null,
+          show: true,
+        },
+        {
+          label: 'Pages',
+          href: '/pages',
+          icon: BookOpen,
+          show: true,
+        },
+        {
+          label: 'Clients',
+          href: '/finance/clients',
+          icon: Users,
+          show: true,
+        },
+        {
+          label: 'Projects',
+          href: '/projects',
+          icon: FolderKanban,
+          show: true,
+        },
+        {
+          label: 'Time',
+          href: '/time',
+          icon: Clock,
+          show: true,
+        },
+        {
+          label: 'Workload',
+          href: '/workload',
+          icon: Gauge,
+          show: true,
+        },
+        {
+          label: 'Reports',
+          href: '/reports',
+          icon: BarChart3,
+          show: true,
+        },
+        {
+          label: 'Calendar',
+          href: '/calendar',
+          icon: Calendar,
+          show: true,
+        },
+      ].filter((item) => item.show);
+
+  // Department definitions
+  const operationsDept = {
+    key: 'operations',
+    name: 'OPERATIONS',
+    items: isGuest
+      ? []
+      : [
+          {
+            label: 'Automations',
+            href: '/automations',
+            icon: Zap,
+            show: canAutomations,
+          },
+        ].filter((item) => item.show),
+  };
+
+  const financeDept = {
+    key: 'finance',
+    name: 'FINANCE',
+    items: isGuest
+      ? []
+      : [
+          {
+            label: 'Finance Overview',
+            href: '/finance',
+            icon: DollarSign,
+            show: true,
+          },
+          {
+            label: 'Invoice Tracker',
+            href: '/finance/invoices',
+            icon: Receipt,
+            show: true,
+          },
+          {
+            label: 'PDC Tracker',
+            href: '/finance/pdcs',
+            icon: FileCheck,
+            show: true,
+          },
+          {
+            label: 'Payments',
+            href: '/finance/payments',
+            icon: CreditCard,
+            show: true,
+          },
+        ].filter((item) => item.show),
+  };
+
+  const marketingDept = {
+    key: 'marketing',
+    name: 'MARKETING',
+    items: isGuest
+      ? []
+      : [
+          {
+            label: 'Social Economy',
+            href: '/marketing/social-economy',
+            icon: Share2,
+            show: true,
+          },
+        ].filter((item) => item.show),
+  };
+
+  // Administration / Workspace management (for admin / manager / owner)
+  const managementNavItems = [
     {
       label: 'All Tasks',
       href: '/all-tasks',
       icon: Layers,
-      show: user.role === 'admin',
+      show: canAllTasks,
     },
     {
       label: 'Team Directory',
       href: '/team',
       icon: Users,
-      show: user.role === 'admin' || !!user.can_reset_other_user_passwords,
+      show: canTeamDirectory && (user.role === 'admin' || !!user.can_reset_other_user_passwords || wRole === 'manager'),
     },
     {
       label: 'Employee Analytics',
       href: '/analytics',
       icon: BarChart3,
-      show: user.role === 'admin',
+      show: canAnalytics,
     },
     {
       label: 'Activity & Audit Log',
       href: '/audit-log',
       icon: History,
-      show: user.role === 'admin',
+      show: canAnalytics,
     },
     {
       label: 'Workspace Settings',
       href: '/settings/workspace',
       icon: Building2,
-      show: user.role === 'admin',
+      show: canWorkspaceSettings,
     },
+  ].filter((item) => item.show);
+
+  const settingsNavItems = [
     {
       label: 'Account Settings',
       href: '/settings',
       icon: Settings,
+      show: true,
+    },
+    {
+      label: 'Integrations',
+      href: '/settings/integrations',
+      icon: Boxes,
       show: true,
     },
   ].filter((item) => item.show);
@@ -367,7 +636,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
     if (pathname === '/dashboard') {
       return user.role === 'admin' ? 'Organization Operations Center' : `Welcome back, ${user.name}`;
     }
+    if (pathname === '/client/projects' || pathname?.startsWith('/client/projects')) return 'Client Portal — Shared Projects';
+    if (pathname === '/client/pages' || pathname?.startsWith('/client/pages')) return 'Client Portal — Shared Documentation';
     if (pathname === '/chat') return 'Real-Time Internal Chat';
+    if (pathname === '/pages' || pathname?.startsWith('/pages')) return 'VEYA Pages & Knowledge';
+    if (pathname === '/projects' || pathname?.startsWith('/projects')) return 'Projects & Milestones';
+    if (pathname === '/time' || pathname?.startsWith('/time')) return 'Time Tracking & Timesheets';
+    if (pathname === '/workload' || pathname?.startsWith('/workload')) return 'Workload & Team Capacity';
+    if (pathname === '/reports' || pathname?.startsWith('/reports')) return 'Operational Reporting & Intelligence';
+    if (pathname === '/calendar' || pathname?.startsWith('/calendar')) return 'Workspace Calendar & Meetings';
     if (pathname === '/finance') return 'Finance Overview & KPIs';
     if (pathname === '/finance/invoices') return 'Internal Invoice Tracker';
     if (pathname === '/finance/pdcs') return 'Post-Dated Cheques (PDC) Tracker';
@@ -378,6 +655,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
     if (pathname === '/analytics') return 'Employee & Team Performance Analytics';
     if (pathname === '/audit-log') return 'Organization Activity & Audit Log';
     if (pathname === '/settings/workspace') return 'Workspace Settings & Team Members';
+    if (pathname === '/settings/integrations') return 'Google & Microsoft Integrations';
     if (pathname === '/settings') return 'Account Security & Personal Settings';
     if (pathname === '/my-tasks') return 'My Assigned Work';
     return 'Workspace';
@@ -388,14 +666,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
       {/* Mobile backdrop */}
       {mobileNavOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs lg:hidden"
           onClick={() => setMobileNavOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-slate-900 text-slate-100 flex flex-col transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-slate-900 text-slate-100 flex flex-col transition-transform duration-200 ease-in-out border-r border-slate-800 lg:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -424,12 +702,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
         <div className="p-3.5 mx-3 my-3 rounded-xl bg-slate-800/80 border border-slate-700/60">
           <div className="flex items-center space-x-3">
             {/* Animal Emoji Avatar (replaces letter circle) */}
-            <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center text-xl shadow-inner shrink-0">
+            <div className="h-10 w-10 rounded-full bg-slate-700/80 border border-slate-600/60 flex items-center justify-center text-xl shadow-inner shrink-0">
               {user.animal_emoji || '🦊'}
             </div>
             <div className="overflow-hidden flex-1">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-sm text-white truncate block">
+                <span className="font-semibold text-sm text-slate-100 truncate block">
                   {user.name}
                 </span>
                 {getStatusIndicator(mySelectedStatus)}
@@ -480,118 +758,229 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
           </div>
         </div>
 
-        {/* Action Button: Create Task (AVAILABLE TO ALL AUTHENTICATED USERS) */}
-        {onOpenCreateTask && (
+        {/* Action Button: Create Task (AVAILABLE TO NON-GUEST AUTHENTICATED USERS) */}
+        {!isGuest && onOpenCreateTask && (
           <div className="px-4 mb-2">
             <button
               onClick={onOpenCreateTask}
-              className="w-full flex items-center justify-center space-x-2 py-2 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-sm transition-all focus:outline-hidden cursor-pointer"
+              className="w-full flex items-center justify-center space-x-2 py-2 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-xs transition-all focus:outline-hidden cursor-pointer"
             >
-              <PlusCircle className="w-3.5 h-3.5" />
+              <PlusCircle className="w-3.5 h-3.5 text-current" />
               <span>Create & Assign Task</span>
             </button>
           </div>
         )}
 
-        {/* Navigation */}
-        <nav className="px-3 py-1 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileNavOpen(false)}
-                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  isActive
-                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 font-semibold'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <Icon
-                    className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-400' : 'text-slate-400'}`}
-                  />
-                  <span>{item.label}</span>
-                </div>
-                {item.badge && item.badge > 0 ? (
-                  <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse shadow-sm">
-                    {item.badge > 99 ? '99+' : item.badge}
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* LIVE TEAM / ACTIVE NOW SECTION (PRESENCE SIDEBAR) */}
-        <div
-          ref={presenceScrollRef}
-          onWheel={handlePresenceWheel}
-          className="flex-1 min-h-0 px-3 py-3 overflow-y-auto overscroll-contain touch-pan-y border-t border-slate-800/80 mt-2 space-y-3"
-          style={{ WebkitOverflowScrolling: 'touch' }}
-        >
-          {/* Active Now */}
-          <div>
-            <div className="flex items-center justify-between px-2 mb-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Active Now ({activeUsers.length})
-              </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        {/* Navigation & Presence Unified Scrollable Body (Strictly ONE continuous scroll context) */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-4">
+          {/* 1. Core Workspace Navigation */}
+          <div className="space-y-1">
+            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              {isGuest ? 'Client Portal' : 'Workspace'}
             </div>
+            {coreNavItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileNavOpen(false)}
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                    isActive
+                      ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 font-semibold'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Icon
+                      className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-400' : 'text-slate-400'}`}
+                    />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.badge && item.badge > 0 ? (
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse shadow-xs">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
+          </div>
 
-            {activeUsers.length === 0 ? (
-              <div className="px-2 py-1 text-[11px] text-slate-500 italic">
-                No other users currently active
+          {/* 2. Operations Department */}
+          {operationsDept.items.length > 0 && (
+            <div className="pt-2 border-t border-slate-800">
+              <DepartmentSection
+                title={operationsDept.name}
+                isOpen={!!openDepartments[operationsDept.key]}
+                onToggle={() => toggleDepartment(operationsDept.key)}
+                items={operationsDept.items}
+                currentPath={pathname}
+                onNavigate={() => setMobileNavOpen(false)}
+              />
+            </div>
+          )}
+
+          {/* 3. Finance Department */}
+          {financeDept.items.length > 0 && (
+            <div className="pt-2 border-t border-slate-800">
+              <DepartmentSection
+                title={financeDept.name}
+                isOpen={!!openDepartments[financeDept.key]}
+                onToggle={() => toggleDepartment(financeDept.key)}
+                items={financeDept.items}
+                currentPath={pathname}
+                onNavigate={() => setMobileNavOpen(false)}
+              />
+            </div>
+          )}
+
+          {/* 4. Marketing Department */}
+          {marketingDept.items.length > 0 && (
+            <div className="pt-2 border-t border-slate-800">
+              <DepartmentSection
+                title={marketingDept.name}
+                isOpen={!!openDepartments[marketingDept.key]}
+                onToggle={() => toggleDepartment(marketingDept.key)}
+                items={marketingDept.items}
+                currentPath={pathname}
+                onNavigate={() => setMobileNavOpen(false)}
+              />
+            </div>
+          )}
+
+          {/* 5. Workspace Management (Admin / Manager / Owner) */}
+          {managementNavItems.length > 0 && (
+            <div className="pt-2 border-t border-slate-800 space-y-1">
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Administration
               </div>
-            ) : (
-              <div className="space-y-1">
-                {activeUsers.map((u) => (
+              {managementNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
                   <Link
-                    key={u.id}
-                    href={`/chat?userId=${u.id}`}
+                    key={item.href}
+                    href={item.href}
                     onClick={() => setMobileNavOpen(false)}
-                    className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-slate-800/80 text-xs transition-colors group cursor-pointer"
-                    title={`Message ${u.name}`}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      isActive
+                        ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 font-semibold'
+                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }`}
                   >
-                    <div className="flex items-center space-x-2 truncate">
-                      <span className="text-sm shrink-0">{u.animal_emoji || '🦊'}</span>
-                      <span className="text-slate-200 truncate font-medium group-hover:text-indigo-300 transition-colors">{u.name}</span>
-                    </div>
-                    <div className="flex items-center space-x-1.5 shrink-0 ml-2">
-                      <span className="text-[10px] text-slate-400 capitalize">{u.effective_status}</span>
-                      {getStatusIndicator(u.effective_status)}
+                    <div className="flex items-center space-x-3">
+                      <Icon
+                        className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-400' : 'text-slate-400'}`}
+                      />
+                      <span>{item.label}</span>
                     </div>
                   </Link>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Offline Users */}
-          <div>
-            <div className="px-2 mb-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                Offline ({offlineUsers.length})
-              </span>
+                );
+              })}
             </div>
+          )}
 
-            <div className="space-y-0.5">
-              {offlineUsers.slice(0, 8).map((u) => (
-                <div
-                  key={u.id}
-                  className="flex items-center justify-between px-2 py-1 rounded text-xs opacity-60 hover:opacity-100 transition-opacity"
+          {/* 5. Account Settings */}
+          <div className="pt-2 border-t border-slate-800 space-y-1">
+            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Account
+            </div>
+            {settingsNavItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileNavOpen(false)}
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                    isActive
+                      ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 font-semibold'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
                 >
-                  <div className="flex items-center space-x-2 truncate">
-                    <span className="text-sm shrink-0 grayscale">{u.animal_emoji || '🦊'}</span>
-                    <span className="text-slate-400 truncate">{u.name}</span>
+                  <div className="flex items-center space-x-3">
+                    <Icon
+                      className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-400' : 'text-slate-400'}`}
+                    />
+                    <span>{item.label}</span>
                   </div>
-                  {getStatusIndicator('Offline')}
-                </div>
-              ))}
-            </div>
+                </Link>
+              );
+            })}
           </div>
+
+          {/* 6. LIVE TEAM / ACTIVE NOW & OFFLINE (Natural Flow, Single Scroll Context - HIDDEN FOR GUESTS) */}
+          {!isGuest && (
+            <div className="pt-3 border-t border-slate-800 space-y-3">
+              {/* Active Now */}
+              <div>
+                <div className="flex items-center justify-between px-2 mb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Active Now ({activeUsers.length})
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+
+                {activeUsers.length === 0 ? (
+                  <div className="px-2 py-1 text-[11px] text-slate-500 italic">
+                    No other users currently active
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {activeUsers.map((u) => (
+                      <Link
+                        key={u.id}
+                        href={`/chat?userId=${u.id}`}
+                        onClick={() => setMobileNavOpen(false)}
+                        className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-slate-800/80 text-xs transition-colors group cursor-pointer"
+                        title={`Message ${u.name}`}
+                      >
+                        <div className="flex items-center space-x-2 truncate">
+                          <span className="text-sm shrink-0">{u.animal_emoji || '🦊'}</span>
+                          <span className="text-slate-200 truncate font-medium group-hover:text-indigo-300 transition-colors">
+                            {u.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-1.5 shrink-0 ml-2">
+                          <span className="text-[10px] text-slate-400 capitalize">
+                            {u.effective_status}
+                          </span>
+                          {getStatusIndicator(u.effective_status)}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Offline Users */}
+              <div>
+                <div className="px-2 mb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Offline ({offlineUsers.length})
+                  </span>
+                </div>
+
+                <div className="space-y-0.5">
+                  {offlineUsers.slice(0, 8).map((u) => (
+                    <div
+                      key={u.id}
+                      className="flex items-center justify-between px-2 py-1 rounded text-xs opacity-60 hover:opacity-100 transition-opacity"
+                    >
+                      <div className="flex items-center space-x-2 truncate">
+                        <span className="text-sm shrink-0 grayscale">{u.animal_emoji || '🦊'}</span>
+                        <span className="text-slate-400 truncate">{u.name}</span>
+                      </div>
+                      {getStatusIndicator('Offline')}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer / Logout */}
@@ -629,12 +1018,29 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
           </div>
 
           <div className="flex items-center space-x-3">
+            {/* Global Search Button */}
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center space-x-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-600 transition-all cursor-pointer shadow-2xs group"
+              title="Search VEYA (Cmd + K)"
+            >
+              <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+              <span className="hidden md:inline">Search VEYA...</span>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[10px] font-mono text-slate-500 bg-white border border-slate-200 rounded shadow-2xs">
+                ⌘K
+              </kbd>
+            </button>
+
+            {/* Global Timer Control (Persistent Live Ticker & Quick Controls) */}
+            {!isGuest && <GlobalTimerControl />}
+
             {onOpenCreateTask && (
               <button
                 onClick={onOpenCreateTask}
                 className="hidden sm:inline-flex items-center space-x-1.5 py-1.5 px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
               >
-                <PlusCircle className="w-3.5 h-3.5" />
+                <PlusCircle className="w-3.5 h-3.5 text-current" />
                 <span>+ Create Task</span>
               </button>
             )}
@@ -836,10 +1242,20 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ user, children, onOpenCrea
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main
+          className={`flex-1 flex flex-col w-full ${
+            noPadding ? 'p-0' : 'p-4 sm:p-6 lg:p-8'
+          } ${fullWidth ? 'max-w-none' : 'max-w-7xl mx-auto'}`}
+        >
           {children}
         </main>
       </div>
+
+      {/* Global Search Command Modal */}
+      <GlobalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+      />
     </div>
   );
 };
