@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getTenantContext } from '@/lib/auth';
 import { queryAll, queryFirst, runQuery } from '@/lib/db';
-import { isSafePublicHttpUrl } from '@/lib/socialCrawler';
+import { isSafePublicHttpUrl, performCompliantPublicRefresh } from '@/lib/socialCrawler';
 
 export async function GET(req: Request) {
   try {
@@ -15,9 +15,8 @@ export async function GET(req: Request) {
     const platform = searchParams.get('platform');
 
     let sql = `
-      SELECT sa.*, c.name as client_name, u.name as creator_name
+      SELECT sa.*, u.name as creator_name
       FROM social_accounts sa
-      LEFT JOIN clients c ON sa.client_id = c.id
       LEFT JOIN users u ON sa.created_by_user_id = u.id
       WHERE sa.organisation_id = ?
     `;
@@ -36,7 +35,21 @@ export async function GET(req: Request) {
     sql += ' ORDER BY sa.created_at DESC';
 
     const accounts = await queryAll(sql, params);
-    return NextResponse.json({ accounts });
+
+    // Also fetch follower snapshots history for each account
+    const accountIds = accounts.map(a => a.id);
+    let snapshots: any[] = [];
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      snapshots = await queryAll(
+        `SELECT * FROM social_follower_snapshots 
+         WHERE social_account_id IN (${placeholders}) AND organisation_id = ?
+         ORDER BY observation_timestamp ASC`,
+        [...accountIds, ctx.activeOrg.id]
+      );
+    }
+
+    return NextResponse.json({ accounts, snapshots });
   } catch (err: any) {
     console.error('Error in GET /api/marketing/social-economy/accounts:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -55,9 +68,7 @@ export async function POST(req: Request) {
       platform,
       display_name,
       profile_url,
-      client_id,
-      collection_mode = 'manual',
-      inspect_post_urls = '',
+      follower_count,
       notes = '',
       tags = ''
     } = body;
@@ -84,7 +95,18 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check duplicate
+    let parsedFollowers: number | null = null;
+    if (follower_count !== undefined && follower_count !== null && follower_count !== '') {
+      parsedFollowers = Number(follower_count);
+      if (isNaN(parsedFollowers) || parsedFollowers < 0 || !Number.isInteger(parsedFollowers)) {
+        return NextResponse.json(
+          { error: 'Follower count must be a non-negative whole integer.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Check duplicate platform + profile_url in current workspace
     const existing = await queryFirst(
       'SELECT id FROM social_accounts WHERE organisation_id = ? AND platform = ? AND profile_url = ?',
       [ctx.activeOrg.id, platform.toLowerCase(), profile_url]
@@ -97,29 +119,103 @@ export async function POST(req: Request) {
       );
     }
 
+    // 1. Persist the account in D1
     const result = await runQuery(
       `INSERT INTO social_accounts (
-        organisation_id, client_id, created_by_user_id, platform, display_name,
-        profile_url, collection_mode, inspect_post_urls, notes, tags, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))`,
+        organisation_id, created_by_user_id, platform, display_name,
+        profile_url, collection_mode, notes, tags, status, current_followers,
+        last_refreshed_at, last_refresh_status, last_refresh_message, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, 'manual', ?, ?, 'active', ?, datetime('now'), 'checking', 'Checking public data...', datetime('now'), datetime('now'))`,
       [
         ctx.activeOrg.id,
-        client_id ? Number(client_id) : null,
         ctx.user.id,
         platform.toLowerCase(),
         display_name.trim(),
         profile_url.trim(),
-        collection_mode,
-        inspect_post_urls,
         notes,
-        tags
+        tags,
+        parsedFollowers
       ]
     );
 
+    const accountId = Number(result.lastInsertRowid);
+    const nowIso = new Date().toISOString();
+
+    // 2. Save initial manual follower snapshot if provided
+    if (parsedFollowers !== null) {
+      await runQuery(
+        `INSERT INTO social_follower_snapshots (
+          organisation_id, social_account_id, follower_count, source, observation_timestamp, notes, created_at
+        ) VALUES (?, ?, ?, 'manual', ?, 'Initial account baseline', datetime('now'))`,
+        [ctx.activeOrg.id, accountId, parsedFollowers, nowIso]
+      );
+    }
+
+    // 3. Immediately attempt background public enrichment
+    (async () => {
+      try {
+        const crawl = await performCompliantPublicRefresh(platform.toLowerCase() as any, profile_url.trim());
+        const isSuccess = crawl.status === 'updated' && crawl.observedFollowers !== undefined && crawl.observedFollowers !== null;
+
+        if (isSuccess) {
+          // Record public_crawl snapshot
+          await runQuery(
+            `INSERT INTO social_follower_snapshots (
+              organisation_id, social_account_id, follower_count, source, observation_timestamp, notes, created_at
+            ) VALUES (?, ?, ?, 'public_crawl', ?, 'Observed via public crawl', datetime('now'))`,
+            [ctx.activeOrg.id, accountId, crawl.observedFollowers, new Date().toISOString()]
+          );
+
+          await runQuery(
+            `UPDATE social_accounts SET
+              current_followers = ?,
+              last_refreshed_at = datetime('now'),
+              last_successful_check_at = datetime('now'),
+              last_refresh_status = 'updated',
+              last_refresh_message = 'Public data verified and updated.',
+              updated_at = datetime('now')
+            WHERE id = ? AND organisation_id = ?`,
+            [crawl.observedFollowers, accountId, ctx.activeOrg.id]
+          );
+        } else {
+          // Update status with crawl feedback without overwriting manual baseline
+          await runQuery(
+            `UPDATE social_accounts SET
+              last_refreshed_at = datetime('now'),
+              last_refresh_status = ?,
+              last_refresh_message = ?,
+              updated_at = datetime('now')
+            WHERE id = ? AND organisation_id = ?`,
+            [crawl.status, crawl.errorMessage || '', accountId, ctx.activeOrg.id]
+          );
+        }
+
+        // Record refresh job entry
+        await runQuery(
+          `INSERT INTO social_refresh_jobs (
+            organisation_id, social_account_id, triggered_by_user_id, status,
+            source, records_inspected, records_updated, error_message, started_at, completed_at, created_at
+          ) VALUES (?, ?, ?, ?, 'public_crawl', ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))`,
+          [
+            ctx.activeOrg.id,
+            accountId,
+            ctx.user.id,
+            crawl.status === 'updated' ? 'completed' : crawl.status,
+            crawl.recordsInspected,
+            crawl.recordsUpdated,
+            crawl.errorMessage || null
+          ]
+        );
+      } catch (crawlErr) {
+        console.error('Background enrichment error on save:', crawlErr);
+      }
+    })();
+
     return NextResponse.json({
       success: true,
-      accountId: result.lastInsertRowid,
-      message: 'Social account created successfully.'
+      accountId,
+      currentFollowers: parsedFollowers,
+      message: 'Social account created. Background public check initiated.'
     });
   } catch (err: any) {
     console.error('Error in POST /api/marketing/social-economy/accounts:', err);
@@ -135,14 +231,14 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { id, display_name, profile_url, client_id, collection_mode, inspect_post_urls, notes, tags, status } = body;
+    const { id, display_name, profile_url, follower_count, notes, tags, status } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Account ID is required.' }, { status: 400 });
     }
 
     const account = await queryFirst(
-      'SELECT id FROM social_accounts WHERE id = ? AND organisation_id = ?',
+      'SELECT id, current_followers FROM social_accounts WHERE id = ? AND organisation_id = ?',
       [id, ctx.activeOrg.id]
     );
 
@@ -150,13 +246,23 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: 'Social account not found.' }, { status: 404 });
     }
 
+    let parsedFollowers: number | null | undefined = undefined;
+    if (follower_count !== undefined && follower_count !== null && follower_count !== '') {
+      parsedFollowers = Number(follower_count);
+      if (isNaN(parsedFollowers) || parsedFollowers < 0 || !Number.isInteger(parsedFollowers)) {
+        return NextResponse.json(
+          { error: 'Follower count must be a non-negative whole integer.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Update account
     await runQuery(
       `UPDATE social_accounts SET
         display_name = COALESCE(?, display_name),
         profile_url = COALESCE(?, profile_url),
-        client_id = ?,
-        collection_mode = COALESCE(?, collection_mode),
-        inspect_post_urls = COALESCE(?, inspect_post_urls),
+        current_followers = CASE WHEN ? IS NOT NULL THEN ? ELSE current_followers END,
         notes = COALESCE(?, notes),
         tags = COALESCE(?, tags),
         status = COALESCE(?, status),
@@ -165,9 +271,8 @@ export async function PATCH(req: Request) {
       [
         display_name,
         profile_url,
-        client_id !== undefined ? (client_id ? Number(client_id) : null) : undefined,
-        collection_mode,
-        inspect_post_urls,
+        parsedFollowers !== undefined ? parsedFollowers : null,
+        parsedFollowers !== undefined ? parsedFollowers : null,
         notes,
         tags,
         status,
@@ -175,6 +280,16 @@ export async function PATCH(req: Request) {
         ctx.activeOrg.id
       ]
     );
+
+    // If new follower observation provided, save historical manual snapshot
+    if (parsedFollowers !== undefined && parsedFollowers !== null && parsedFollowers !== account.current_followers) {
+      await runQuery(
+        `INSERT INTO social_follower_snapshots (
+          organisation_id, social_account_id, follower_count, source, observation_timestamp, notes, created_at
+        ) VALUES (?, ?, ?, 'manual', ?, 'Manual update from edit form', datetime('now'))`,
+        [ctx.activeOrg.id, id, parsedFollowers, new Date().toISOString()]
+      );
+    }
 
     return NextResponse.json({ success: true, message: 'Social account updated successfully.' });
   } catch (err: any) {

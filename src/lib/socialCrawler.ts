@@ -5,19 +5,20 @@
  * - Ordinary HTTP/HTTPS only for sources that permit public retrieval.
  * - Strict SSRF protection: block private/loopback/cloud metadata IP ranges.
  * - Platform awareness:
- *   - Reddit: Automated unauthenticated scraping is restricted/blocked by bot walls. Requires Manual / CSV mode.
- *   - LinkedIn: Protected by auth walls & terms prohibiting unauthorized automated collection. Requires Manual / CSV mode.
- *   - Facebook / Instagram: Protected by login walls & terms prohibiting automated collection without partner APIs. Requires Manual / CSV mode.
- *   - X: Profiles/posts require authenticated API or return login prompts for web crawlers.
- *   - Open Web / Permitted RSS / Open Graph / oEmbed: Safely inspects permissible public endpoints with strict timeouts & rate limits.
+ *   - LinkedIn: Protected by auth walls & terms prohibiting unauthorized automated collection. Requires manual entry or CSV.
+ *   - Reddit: Restricts automated scraping under commercial policies and bot walls. Requires manual entry or CSV.
+ *   - Instagram / Facebook: Enforces strict login walls and does not permit unauthenticated public follower scraping.
+ *   - X: Profiles/posts require authenticated API or redirect scrapers to login walls.
+ *   - Open Permitted Public Endpoints: Safely inspects permissible public endpoints with strict timeouts, SSRF filters, and headers.
  */
 
 export interface CrawlResult {
-  status: 'success' | 'no_metrics_found' | 'unsupported_source' | 'restricted_or_blocked' | 'invalid_url' | 'network_error';
+  status: 'checking' | 'updated' | 'no_new_data' | 'unsupported_source' | 'access_restricted' | 'retry_later' | 'error';
   platform: 'x' | 'facebook' | 'instagram' | 'linkedin' | 'reddit' | 'unknown';
   provenance: string;
   recordsInspected: number;
   recordsUpdated: number;
+  observedFollowers?: number | null;
   errorMessage?: string;
   data?: {
     impressions?: number;
@@ -55,7 +56,7 @@ export function isSafePublicHttpUrl(inputUrl: string): boolean {
       return false;
     }
 
-    // Check common private IPv4 ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x, 169.254.x.x AWS/metadata)
+    // Check common private IPv4 ranges (10.x, 172.16-31.x, 192.168.x, 169.254.x AWS/metadata)
     const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
     const match = hostname.match(ipv4Regex);
     if (match) {
@@ -75,25 +76,7 @@ export function isSafePublicHttpUrl(inputUrl: string): boolean {
 }
 
 /**
- * Identifies the platform based on URL hostname.
- */
-export function detectPlatformFromUrl(urlStr: string): 'x' | 'facebook' | 'instagram' | 'linkedin' | 'reddit' | 'unknown' {
-  try {
-    const parsed = new URL(urlStr);
-    const host = parsed.hostname.toLowerCase();
-    if (host.includes('twitter.com') || host.includes('x.com')) return 'x';
-    if (host.includes('facebook.com') || host.includes('fb.com')) return 'facebook';
-    if (host.includes('instagram.com')) return 'instagram';
-    if (host.includes('linkedin.com')) return 'linkedin';
-    if (host.includes('reddit.com')) return 'reddit';
-    return 'unknown';
-  } catch {
-    return 'unknown';
-  }
-}
-
-/**
- * Attempts a compliant public retrieval for an eligible social account or post URL.
+ * Attempts a compliant public retrieval for an eligible social account or profile URL.
  */
 export async function performCompliantPublicRefresh(
   platform: 'x' | 'facebook' | 'instagram' | 'linkedin' | 'reddit',
@@ -102,61 +85,61 @@ export async function performCompliantPublicRefresh(
 ): Promise<CrawlResult> {
   if (!isSafePublicHttpUrl(profileUrl)) {
     return {
-      status: 'invalid_url',
+      status: 'error',
       platform,
       provenance: 'public_crawl',
       recordsInspected: 0,
       recordsUpdated: 0,
-      errorMessage: 'The provided profile URL is invalid or targets a non-public/internal address.'
+      errorMessage: 'The provided profile URL is invalid or targets an internal/private address.'
     };
   }
 
-  // Handle platforms where automated unauthenticated retrieval is restricted or blocked
+  // Handle platforms where automated unauthenticated retrieval is restricted by terms or auth walls
   if (platform === 'linkedin') {
     return {
-      status: 'restricted_or_blocked',
+      status: 'access_restricted',
       platform,
       provenance: 'public_crawl',
       recordsInspected: 1,
       recordsUpdated: 0,
-      errorMessage: 'LinkedIn restricts unauthenticated automated crawling and requires authentication/OAuth. Use Manual entry or CSV import for LinkedIn analytics.'
+      errorMessage: 'LinkedIn restricts unauthenticated automated crawling and requires official login. Use manual follower updates or CSV imports.'
     };
   }
 
   if (platform === 'reddit') {
     return {
-      status: 'restricted_or_blocked',
+      status: 'access_restricted',
       platform,
       provenance: 'public_crawl',
       recordsInspected: 1,
       recordsUpdated: 0,
-      errorMessage: 'Reddit restricts automated scraping under its commercial data policies. Use Manual entry or CSV import for Reddit metrics.'
+      errorMessage: 'Reddit restricts automated public scraping under its data access policies. Use manual follower updates or CSV imports.'
     };
   }
 
   if (platform === 'instagram' || platform === 'facebook') {
     return {
-      status: 'restricted_or_blocked',
+      status: 'access_restricted',
       platform,
       provenance: 'public_crawl',
       recordsInspected: 1,
       recordsUpdated: 0,
-      errorMessage: `${platform === 'instagram' ? 'Instagram' : 'Facebook'} enforces strict login walls and does not permit unauthenticated public data extraction. Use CSV import or Manual analytics entry.`
+      errorMessage: `${platform === 'instagram' ? 'Instagram' : 'Facebook'} enforces login walls for public metrics. Use manual follower updates or CSV imports.`
     };
   }
 
   if (platform === 'x') {
     return {
-      status: 'restricted_or_blocked',
+      status: 'access_restricted',
       platform,
       provenance: 'public_crawl',
       recordsInspected: 1,
       recordsUpdated: 0,
-      errorMessage: 'X (formerly Twitter) requires authenticated API access to retrieve analytics and disallows unauthenticated scrapers. Use CSV import or Manual entry.'
+      errorMessage: 'X (formerly Twitter) disallows automated public crawlers without authenticated API tokens. Use manual follower updates or CSV imports.'
     };
   }
 
-  // Fallback for general permitted public URLs (e.g. public blogs, RSS feeds, open oEmbed)
+  // Fallback for general permitted public endpoints (e.g. open RSS, public blog feeds, oEmbed)
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 6000); // 6s timeout
@@ -173,7 +156,7 @@ export async function performCompliantPublicRefresh(
 
     if (!resp.ok) {
       return {
-        status: resp.status === 403 || resp.status === 401 ? 'restricted_or_blocked' : 'network_error',
+        status: resp.status === 403 || resp.status === 401 ? 'access_restricted' : 'error',
         platform,
         provenance: 'public_crawl',
         recordsInspected: 1,
@@ -183,16 +166,16 @@ export async function performCompliantPublicRefresh(
     }
 
     return {
-      status: 'no_metrics_found',
+      status: 'no_new_data',
       platform,
       provenance: 'public_crawl',
       recordsInspected: 1,
       recordsUpdated: 0,
-      errorMessage: 'Public page responded successfully, but no structured public metrics were available without platform API access.'
+      errorMessage: 'Public page responded, but no structured public follower count was available without platform API access.'
     };
   } catch (err: any) {
     return {
-      status: err.name === 'AbortError' ? 'network_error' : 'network_error',
+      status: err.name === 'AbortError' ? 'retry_later' : 'error',
       platform,
       provenance: 'public_crawl',
       recordsInspected: 1,

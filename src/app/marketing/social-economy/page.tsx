@@ -12,6 +12,7 @@ import {
   Calendar,
   BarChart3,
   TrendingUp,
+  TrendingDown,
   Layers,
   Link2,
   ExternalLink,
@@ -28,27 +29,34 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Check,
-  ChevronDown
+  ChevronDown,
+  Users
 } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
 
 type Platform = 'x' | 'facebook' | 'instagram' | 'linkedin' | 'reddit';
-type CollectionMode = 'public_crawl' | 'manual' | 'csv';
 type PostStatus = 'draft' | 'planned' | 'reminder_due' | 'published' | 'archived';
+
+interface FollowerSnapshot {
+  id: number;
+  social_account_id: number;
+  follower_count: number;
+  source: 'manual' | 'csv' | 'public_crawl';
+  observation_timestamp: string;
+  notes?: string;
+}
 
 interface SocialAccount {
   id: number;
   platform: Platform;
   display_name: string;
   profile_url: string;
-  client_id?: number | null;
-  client_name?: string;
-  collection_mode: CollectionMode;
-  inspect_post_urls?: string;
+  current_followers?: number | null;
   notes?: string;
   tags?: string;
   status: 'active' | 'archived';
   last_refreshed_at?: string;
+  last_successful_check_at?: string;
   last_refresh_status?: string;
   last_refresh_message?: string;
 }
@@ -93,23 +101,29 @@ export default function SocialEconomyPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'posts' | 'analytics' | 'import_export'>('overview');
 
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const [followerSnapshots, setFollowerSnapshots] = useState<FollowerSnapshot[]>([]);
   const [posts, setPosts] = useState<SocialPost[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
 
   // Filters
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [metricForChart, setMetricForChart] = useState<'impressions' | 'reach' | 'interactions'>('impressions');
+  const [growthTimeRange, setGrowthTimeRange] = useState<30 | 60 | 90>(30);
 
   // Modals
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [postModalOpen, setPostModalOpen] = useState(false);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
-  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Editing state
-  const [editingAccount, setEditingAccount] = useState<Partial<SocialAccount> | null>(null);
+  const [editingAccount, setEditingAccount] = useState<Partial<SocialAccount> & { follower_count?: string }>({
+    platform: 'linkedin',
+    display_name: '',
+    profile_url: '',
+    follower_count: '',
+    notes: ''
+  });
   const [editingPost, setEditingPost] = useState<Partial<SocialPost> | null>(null);
   const [selectedPostForMetrics, setSelectedPostForMetrics] = useState<SocialPost | null>(null);
 
@@ -132,7 +146,6 @@ export default function SocialEconomyPage() {
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [csvError, setCsvError] = useState('');
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Refresh status
@@ -151,7 +164,7 @@ export default function SocialEconomyPage() {
         const meData = await meRes.json();
         setCurrentUser(meData.user);
 
-        // Fetch Accounts, Posts, Clients
+        // Fetch Accounts, Posts, Follower Snapshots
         await reloadData();
       } catch (err) {
         console.error('Initialization error:', err);
@@ -164,37 +177,109 @@ export default function SocialEconomyPage() {
 
   const reloadData = async () => {
     try {
-      const [accRes, postRes, clientRes] = await Promise.all([
+      const [accRes, postRes] = await Promise.all([
         fetch('/api/marketing/social-economy/accounts'),
-        fetch('/api/marketing/social-economy/posts'),
-        fetch('/api/finance/clients')
+        fetch('/api/marketing/social-economy/posts')
       ]);
 
       if (accRes.ok) {
         const d = await accRes.json();
         setAccounts(d.accounts || []);
+        setFollowerSnapshots(d.snapshots || []);
       }
       if (postRes.ok) {
         const d = await postRes.json();
         setPosts(d.posts || []);
-      }
-      if (clientRes.ok) {
-        const d = await clientRes.json();
-        setClients(d.clients || []);
       }
     } catch (e) {
       console.error('Reload data error:', e);
     }
   };
 
-  // KPI Calculations
-  const stats = useMemo(() => {
-    const filteredPosts = posts.filter(p => {
-      if (selectedPlatform !== 'all' && p.platform !== selectedPlatform) return false;
-      return true;
-    });
+  // Follower Growth Calculation for 30/60/90 Days
+  const platformGrowthData = useMemo(() => {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - growthTimeRange);
+    const cutoffIso = cutoffDate.toISOString();
 
-    const published = filteredPosts.filter(p => p.status === 'published');
+    const platformsList: Platform[] = ['linkedin', 'x', 'instagram', 'facebook', 'reddit'];
+
+    return platformsList.map(platform => {
+      const platAccounts = accounts.filter(a => a.platform === platform && a.status === 'active');
+      
+      // Sum latest valid follower count across accounts
+      let currentTotal = 0;
+      let hasAnyAccount = platAccounts.length > 0;
+      let hasCurrentFollowers = false;
+
+      platAccounts.forEach(acc => {
+        if (acc.current_followers !== undefined && acc.current_followers !== null) {
+          currentTotal += acc.current_followers;
+          hasCurrentFollowers = true;
+        }
+      });
+
+      // Calculate baseline follower count at or immediately prior to cutoff
+      let baselineTotal = 0;
+      let baselineAccountsFound = 0;
+      let latestObsDate: string | null = null;
+
+      platAccounts.forEach(acc => {
+        const accSnaps = followerSnapshots
+          .filter(s => s.social_account_id === acc.id)
+          .sort((a, b) => new Date(a.observation_timestamp).getTime() - new Date(b.observation_timestamp).getTime());
+
+        if (accSnaps.length > 0) {
+          const lastSnap = accSnaps[accSnaps.length - 1];
+          if (!latestObsDate || new Date(lastSnap.observation_timestamp) > new Date(latestObsDate)) {
+            latestObsDate = lastSnap.observation_timestamp;
+          }
+
+          // Find baseline snapshot: closest snapshot at or before cutoffDate
+          const priorSnaps = accSnaps.filter(s => s.observation_timestamp <= cutoffIso);
+          if (priorSnaps.length > 0) {
+            baselineTotal += priorSnaps[priorSnaps.length - 1].follower_count;
+            baselineAccountsFound++;
+          } else if (accSnaps.length >= 2) {
+            // If account was created within the window, use earliest snapshot as baseline
+            baselineTotal += accSnaps[0].follower_count;
+            baselineAccountsFound++;
+          }
+        }
+      });
+
+      let netChange: number | null = null;
+      let pctChange: number | null = null;
+      let statusNote: string | null = null;
+
+      if (!hasAnyAccount) {
+        statusNote = 'No accounts linked';
+      } else if (!hasCurrentFollowers) {
+        statusNote = 'No follower counts entered';
+      } else if (baselineAccountsFound === 0) {
+        statusNote = 'Not enough history yet';
+      } else {
+        netChange = currentTotal - baselineTotal;
+        if (baselineTotal > 0) {
+          pctChange = Number(((netChange / baselineTotal) * 100).toFixed(1));
+        }
+      }
+
+      return {
+        platform,
+        accountsCount: platAccounts.length,
+        currentFollowers: hasCurrentFollowers ? currentTotal : null,
+        netChange,
+        pctChange,
+        statusNote,
+        latestObsDate
+      };
+    });
+  }, [accounts, followerSnapshots, growthTimeRange]);
+
+  // Overall Total Followers & KPI Calculations
+  const stats = useMemo(() => {
+    const published = posts.filter(p => p.status === 'published');
     const totalImpressions = published.reduce((sum, p) => sum + (p.impressions || 0), 0);
     const totalReach = published.reduce((sum, p) => sum + (p.reach || 0), 0);
     const totalInteractions = published.reduce((sum, p) => {
@@ -209,25 +294,37 @@ export default function SocialEconomyPage() {
       ? Number((validRates.reduce((a, b) => a + b, 0) / validRates.length).toFixed(2))
       : null;
 
-    const activeAccs = accounts.filter(a => a.status === 'active').length;
-    const pendingRefreshes = accounts.filter(a => a.last_refresh_status === 'pending' || a.last_refresh_status === 'running').length;
+    const activeAccs = accounts.filter(a => a.status === 'active');
+
+    // Sum latest follower counts across all active accounts
+    let totalFollowers = 0;
+    let accountsWithFollowers = 0;
+    activeAccs.forEach(a => {
+      if (a.current_followers !== undefined && a.current_followers !== null) {
+        totalFollowers += a.current_followers;
+        accountsWithFollowers++;
+      }
+    });
+
+    const pendingRefreshes = accounts.filter(a => a.last_refresh_status === 'checking').length;
 
     return {
-      totalPosts: filteredPosts.length,
+      totalPosts: posts.length,
       publishedPosts: published.length,
       totalImpressions,
       totalReach,
       totalInteractions,
       avgEngagement,
-      activeAccounts: activeAccs,
+      activeAccounts: activeAccs.length,
+      totalFollowers: accountsWithFollowers > 0 ? totalFollowers : 0,
       pendingRefreshes
     };
-  }, [posts, accounts, selectedPlatform]);
+  }, [posts, accounts]);
 
   // Handle Account Save
   const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingAccount?.platform || !editingAccount?.display_name || !editingAccount?.profile_url) {
+    if (!editingAccount.platform || !editingAccount.display_name || !editingAccount.profile_url) {
       setNotice({ type: 'error', text: 'Platform, display name, and public profile URL are required.' });
       return;
     }
@@ -237,15 +334,27 @@ export default function SocialEconomyPage() {
       const res = await fetch('/api/marketing/social-economy/accounts', {
         method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingAccount)
+        body: JSON.stringify({
+          ...editingAccount,
+          follower_count: editingAccount.follower_count ? Number(editingAccount.follower_count) : null
+        })
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to save account');
 
-      setNotice({ type: 'success', text: isEdit ? 'Account updated.' : 'Account created.' });
+      setNotice({
+        type: 'success',
+        text: isEdit ? 'Account updated.' : 'Account created. Public enrichment running in background.'
+      });
       setAccountModalOpen(false);
-      setEditingAccount(null);
+      setEditingAccount({
+        platform: 'linkedin',
+        display_name: '',
+        profile_url: '',
+        follower_count: '',
+        notes: ''
+      });
       await reloadData();
     } catch (err: any) {
       setNotice({ type: 'error', text: err.message });
@@ -308,7 +417,7 @@ export default function SocialEconomyPage() {
     }
   };
 
-  // Trigger Refresh
+  // Trigger Refresh All
   const handleRefresh = async (accountId?: number) => {
     try {
       setRefreshing(true);
@@ -353,7 +462,6 @@ export default function SocialEconomyPage() {
         throw new Error('CSV must contain a header row and at least one data row.');
       }
 
-      // Simple robust CSV line splitter with quote handling
       const parseLine = (line: string) => {
         const out: string[] = [];
         let cur = '';
@@ -387,7 +495,6 @@ export default function SocialEconomyPage() {
           rowObj[h.toLowerCase().replace(/[\s-]+/g, '_')] = vals[idx] ? vals[idx].trim() : '';
         });
 
-        // Extract aliases
         const pick = (...keys: string[]) => {
           for (const k of keys) {
             if (rowObj[k] !== undefined && rowObj[k] !== '') return rowObj[k];
@@ -402,15 +509,17 @@ export default function SocialEconomyPage() {
         const likes = pick('likes', 'reactions');
         const comments = pick('comments');
         const shares = pick('shares', 'reposts');
+        const followers = pick('followers', 'follower_count');
 
         rows.push({
-          title: title || `Imported post ${i}`,
+          title: title || `Imported record ${i}`,
           platform,
           caption: pick('caption', 'content', 'text'),
           profile: pick('profile', 'account', 'social_account'),
           date,
           status: pick('status') || 'published',
           post_url: pick('url', 'permalink', 'post_url'),
+          followers: followers ? Number(followers.replace(/,/g, '')) : undefined,
           impressions: impressions ? Number(impressions.replace(/,/g, '')) : undefined,
           likes: likes ? Number(likes.replace(/,/g, '')) : undefined,
           comments: comments ? Number(comments.replace(/,/g, '')) : undefined,
@@ -441,11 +550,12 @@ export default function SocialEconomyPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Import failed');
 
-      setImportResult(data);
       setNotice({
         type: 'success',
         text: `Import complete: ${data.importedCount} added, ${data.updatedCount} updated, ${data.failedCount} errors.`
       });
+      setCsvFile(null);
+      setCsvPreviewRows([]);
       await reloadData();
     } catch (err: any) {
       setNotice({ type: 'error', text: err.message });
@@ -454,12 +564,11 @@ export default function SocialEconomyPage() {
     }
   };
 
-  // CSV Template Download
   const downloadTemplate = () => {
     const csvContent =
-      'title,platform,profile,date,status,impressions,reach,likes,comments,shares,clicks,url\n' +
-      '"Product Launch Update","linkedin","LucidMediax","2026-10-15","published",1800,1400,95,12,18,34,"https://linkedin.com"\n' +
-      '"Engineering Showcase","x","Brand X","2026-10-15","published",3200,2800,120,18,45,80,"https://x.com"\n';
+      'title,platform,profile,date,status,followers,impressions,reach,likes,comments,shares,clicks,url\n' +
+      '"Product Launch Update","linkedin","LucidMediax","2026-10-15","published",8200,1800,1400,95,12,18,34,"https://linkedin.com"\n' +
+      '"Engineering Showcase","x","Brand X","2026-10-15","published",4800,3200,2800,120,18,45,80,"https://x.com"\n';
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -469,7 +578,6 @@ export default function SocialEconomyPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Export Current Posts to CSV
   const handleExportPosts = () => {
     if (!posts.length) return;
     const headers = [
@@ -519,7 +627,6 @@ export default function SocialEconomyPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Filtered Posts
   const visiblePosts = useMemo(() => {
     return posts.filter(p => {
       if (selectedPlatform !== 'all' && p.platform !== selectedPlatform) return false;
@@ -550,21 +657,18 @@ export default function SocialEconomyPage() {
   return (
     <AppLayout user={currentUser}>
       <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
-        {/* Top Header */}
+        {/* Top Header - Cleaned & Product-Focused */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
           <div>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600">
               <Share2 className="w-4 h-4" />
               <span>Marketing Department</span>
             </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1 flex items-center gap-2">
-              <span>Social Economy</span>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                Zero-Cost / API-Free
-              </span>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1">
+              Social Economy
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              Unified social media planning, manual metric logging, CSV ingestion, and public enrichment.
+              Unified social media planning, follower growth, performance analytics, and public enrichment.
             </p>
           </div>
 
@@ -583,8 +687,8 @@ export default function SocialEconomyPage() {
                   platform: 'linkedin',
                   display_name: '',
                   profile_url: '',
-                  collection_mode: 'manual',
-                  status: 'active'
+                  follower_count: '',
+                  notes: ''
                 });
                 setAccountModalOpen(true);
               }}
@@ -630,8 +734,15 @@ export default function SocialEconomyPage() {
           </div>
         )}
 
-        {/* KPI Cards Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+        {/* KPI Cards Grid - Cleaned (Removed Data Mode, Added Total Followers) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Followers</span>
+            <span className="text-xl font-black text-slate-900 mt-1 block">
+              {stats.totalFollowers.toLocaleString()}
+            </span>
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Across {stats.activeAccounts} profiles</span>
+          </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Posts</span>
             <span className="text-xl font-black text-slate-900 mt-1 block">{stats.totalPosts}</span>
@@ -650,7 +761,7 @@ export default function SocialEconomyPage() {
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Interactions</span>
             <span className="text-xl font-black text-slate-900 mt-1 block">{stats.totalInteractions.toLocaleString()}</span>
-            <span className="text-[10px] text-slate-500 mt-0.5 block">Likes+Comments+Shares</span>
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Likes + comments + shares</span>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Avg Engagement</span>
@@ -660,19 +771,9 @@ export default function SocialEconomyPage() {
             <span className="text-[10px] text-slate-500 mt-0.5 block">Interactions / Views</span>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Accounts</span>
-            <span className="text-xl font-black text-slate-900 mt-1 block">{stats.activeAccounts}</span>
-            <span className="text-[10px] text-slate-500 mt-0.5 block">{accounts.length} Total</span>
-          </div>
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Pending Jobs</span>
             <span className="text-xl font-black text-slate-900 mt-1 block">{stats.pendingRefreshes}</span>
-            <span className="text-[10px] text-slate-500 mt-0.5 block">In queue</span>
-          </div>
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Data Mode</span>
-            <span className="text-xl font-black text-emerald-600 mt-1 block">Zero-Cost</span>
-            <span className="text-[10px] text-slate-500 mt-0.5 block">D1 Serverless</span>
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Background checks</span>
           </div>
         </div>
 
@@ -733,121 +834,123 @@ export default function SocialEconomyPage() {
         {/* TAB 1: OVERVIEW & CHARTS */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            {/* Visual Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Platform Comparison Bar Chart */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs lg:col-span-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-                  <div>
-                    <h3 className="font-bold text-sm text-slate-900">Platform Performance Comparison</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">Aggregated metrics per social network</p>
-                  </div>
-                  <div className="flex items-center gap-2">
+            {/* Visual Charts Row: Responsive 3-Column Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              
+              {/* Card 1: Platform Performance Comparison */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h3 className="font-bold text-sm text-slate-900">Platform Performance</h3>
                     <select
                       value={metricForChart}
                       onChange={e => setMetricForChart(e.target.value as any)}
-                      className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden"
+                      className="text-[11px] font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus:outline-hidden"
                     >
-                      <option value="impressions">Metric: Impressions</option>
-                      <option value="reach">Metric: Reach</option>
-                      <option value="interactions">Metric: Interactions</option>
+                      <option value="impressions">Impressions</option>
+                      <option value="reach">Reach</option>
+                      <option value="interactions">Interactions</option>
                     </select>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-4">Aggregated by social channel</p>
+
+                  <div className="space-y-3">
+                    {(['linkedin', 'x', 'instagram', 'facebook', 'reddit'] as Platform[]).map(plat => {
+                      const platPosts = posts.filter(p => p.platform === plat && p.status === 'published');
+                      const val = platPosts.reduce((sum, p) => {
+                        if (metricForChart === 'impressions') return sum + (p.impressions || 0);
+                        if (metricForChart === 'reach') return sum + (p.reach || 0);
+                        return sum + (p.likes || 0) + (p.comments || 0) + (p.shares || 0);
+                      }, 0);
+
+                      const maxVal = Math.max(
+                        1,
+                        ...(['linkedin', 'x', 'instagram', 'facebook', 'reddit'] as Platform[]).map(pl => {
+                          return posts
+                            .filter(p => p.platform === pl && p.status === 'published')
+                            .reduce((sum, p) => {
+                              if (metricForChart === 'impressions') return sum + (p.impressions || 0);
+                              if (metricForChart === 'reach') return sum + (p.reach || 0);
+                              return sum + (p.likes || 0) + (p.comments || 0) + (p.shares || 0);
+                            }, 0);
+                        })
+                      );
+
+                      const pct = Math.min(100, (val / maxVal) * 100);
+
+                      return (
+                        <div key={plat} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-semibold">
+                            <span className="flex items-center gap-1.5 text-slate-700">
+                              <span
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: platformMeta[plat].color }}
+                              />
+                              {platformMeta[plat].label}
+                            </span>
+                            <span className="text-slate-900 font-mono text-[11px]">{val.toLocaleString()}</span>
+                          </div>
+                          <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${pct}%`,
+                                backgroundColor: platformMeta[plat].color
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="space-y-3.5 pt-2">
-                  {(['linkedin', 'x', 'instagram', 'facebook', 'reddit'] as Platform[]).map(plat => {
-                    const platPosts = posts.filter(p => p.platform === plat && p.status === 'published');
-                    const val = platPosts.reduce((sum, p) => {
-                      if (metricForChart === 'impressions') return sum + (p.impressions || 0);
-                      if (metricForChart === 'reach') return sum + (p.reach || 0);
-                      return sum + (p.likes || 0) + (p.comments || 0) + (p.shares || 0);
-                    }, 0);
-
-                    const maxVal = Math.max(
-                      1,
-                      ...(['linkedin', 'x', 'instagram', 'facebook', 'reddit'] as Platform[]).map(pl => {
-                        return posts
-                          .filter(p => p.platform === pl && p.status === 'published')
-                          .reduce((sum, p) => {
-                            if (metricForChart === 'impressions') return sum + (p.impressions || 0);
-                            if (metricForChart === 'reach') return sum + (p.reach || 0);
-                            return sum + (p.likes || 0) + (p.comments || 0) + (p.shares || 0);
-                          }, 0);
-                      })
-                    );
-
-                    const pct = Math.min(100, (val / maxVal) * 100);
-
-                    return (
-                      <div key={plat} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs font-semibold">
-                          <span className="flex items-center gap-2 text-slate-700">
-                            <span
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{ backgroundColor: platformMeta[plat].color }}
-                            />
-                            {platformMeta[plat].label} ({platPosts.length} posts)
-                          </span>
-                          <span className="text-slate-900 font-mono">{val.toLocaleString()}</span>
-                        </div>
-                        <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{
-                              width: `${pct}%`,
-                              backgroundColor: platformMeta[plat].color
-                            }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="pt-3 border-t border-slate-100 mt-4 text-[11px] text-slate-400">
+                  Based on published post metrics.
                 </div>
               </div>
 
-              {/* Tracked Posts Distribution (Donut Simulation) */}
+              {/* Card 2: Post Distribution Donut */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900">Post Distribution by Platform</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Share of recorded posts in workspace</p>
-                </div>
+                  <h3 className="font-bold text-sm text-slate-900">Post Distribution</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Share of recorded posts by channel</p>
 
-                <div className="py-6 flex flex-col items-center justify-center">
-                  <div className="relative w-36 h-36 flex items-center justify-center">
-                    {/* SVG Donut Chart */}
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f1f5f9" strokeWidth="4" />
-                      {(() => {
-                        let accumulatedPercent = 0;
-                        const total = Math.max(1, posts.length);
-                        return (['linkedin', 'x', 'instagram', 'facebook', 'reddit'] as Platform[]).map(plat => {
-                          const count = posts.filter(p => p.platform === plat).length;
-                          const pct = (count / total) * 100;
-                          const strokeDasharray = `${pct} ${100 - pct}`;
-                          const strokeDashoffset = -accumulatedPercent;
-                          accumulatedPercent += pct;
-                          if (pct === 0) return null;
-                          return (
-                            <circle
-                              key={plat}
-                              cx="18"
-                              cy="18"
-                              r="15.915"
-                              fill="transparent"
-                              stroke={platformMeta[plat].color}
-                              strokeWidth="4"
-                              strokeDasharray={strokeDasharray}
-                              strokeDashoffset={strokeDashoffset}
-                              strokeLinecap="round"
-                            />
-                          );
-                        });
-                      })()}
-                    </svg>
-                    <div className="absolute text-center">
-                      <span className="text-xl font-black text-slate-900 block leading-tight">{posts.length}</span>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Posts</span>
+                  <div className="py-4 flex flex-col items-center justify-center">
+                    <div className="relative w-32 h-32 flex items-center justify-center">
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                        <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f1f5f9" strokeWidth="4" />
+                        {(() => {
+                          let accumulatedPercent = 0;
+                          const total = Math.max(1, posts.length);
+                          return (['linkedin', 'x', 'instagram', 'facebook', 'reddit'] as Platform[]).map(plat => {
+                            const count = posts.filter(p => p.platform === plat).length;
+                            const pct = (count / total) * 100;
+                            const strokeDasharray = `${pct} ${100 - pct}`;
+                            const strokeDashoffset = -accumulatedPercent;
+                            accumulatedPercent += pct;
+                            if (pct === 0) return null;
+                            return (
+                              <circle
+                                key={plat}
+                                cx="18"
+                                cy="18"
+                                r="15.915"
+                                fill="transparent"
+                                stroke={platformMeta[plat].color}
+                                strokeWidth="4"
+                                strokeDasharray={strokeDasharray}
+                                strokeDashoffset={strokeDashoffset}
+                                strokeLinecap="round"
+                              />
+                            );
+                          });
+                        })()}
+                      </svg>
+                      <div className="absolute text-center">
+                        <span className="text-xl font-black text-slate-900 block leading-tight">{posts.length}</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Posts</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -857,7 +960,7 @@ export default function SocialEconomyPage() {
                     const count = posts.filter(p => p.platform === plat).length;
                     const pct = posts.length ? Math.round((count / posts.length) * 100) : 0;
                     return (
-                      <div key={plat} className="flex items-center gap-1.5 text-slate-600">
+                      <div key={plat} className="flex items-center gap-1.5 text-slate-600 text-[11px]">
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: platformMeta[plat].color }} />
                         <span className="truncate">{platformMeta[plat].label}:</span>
                         <span className="font-bold text-slate-900">{pct}%</span>
@@ -866,6 +969,90 @@ export default function SocialEconomyPage() {
                   })}
                 </div>
               </div>
+
+              {/* Card 3: Follower Growth (New Feature Beside Donut) */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <h3 className="font-bold text-sm text-slate-900">Follower Growth</h3>
+                    {/* Time-Range Segmented Control */}
+                    <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
+                      {([30, 60, 90] as const).map(days => (
+                        <button
+                          key={days}
+                          onClick={() => setGrowthTimeRange(days)}
+                          className={`px-2 py-1 rounded-md transition-all ${
+                            growthTimeRange === days
+                              ? 'bg-white text-indigo-600 shadow-xs'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          {days}D
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-3">Net changes across the last {growthTimeRange} days</p>
+
+                  <div className="space-y-2.5">
+                    {platformGrowthData.map(g => (
+                      <div
+                        key={g.platform}
+                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: platformMeta[g.platform].color }}
+                          />
+                          <div>
+                            <span className="font-bold text-slate-800 block text-xs">
+                              {platformMeta[g.platform].label}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {g.accountsCount} {g.accountsCount === 1 ? 'account' : 'accounts'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="font-bold text-slate-900 block font-mono text-xs">
+                            {g.currentFollowers !== null ? g.currentFollowers.toLocaleString() : '—'}
+                          </span>
+                          {g.statusNote ? (
+                            <span className="text-[10px] text-slate-400 italic block">{g.statusNote}</span>
+                          ) : g.netChange !== null ? (
+                            <div className="flex items-center justify-end gap-1 text-[11px] font-semibold">
+                              {g.netChange >= 0 ? (
+                                <span className="text-emerald-600 flex items-center font-mono">
+                                  +{g.netChange.toLocaleString()}
+                                  {g.pctChange !== null && ` (+${g.pctChange}%)`}
+                                </span>
+                              ) : (
+                                <span className="text-red-600 flex items-center font-mono">
+                                  {g.netChange.toLocaleString()}
+                                  {g.pctChange !== null && ` (${g.pctChange}%)`}
+                                </span>
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 mt-4 flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Persisted snapshot history</span>
+                  <button
+                    onClick={() => setActiveTab('accounts')}
+                    className="font-bold text-indigo-600 hover:text-indigo-800"
+                  >
+                    Update Counts →
+                  </button>
+                </div>
+              </div>
+
             </div>
 
             {/* Top-Performing Posts Table */}
@@ -959,7 +1146,6 @@ export default function SocialEconomyPage() {
         {/* TAB 2: POSTS & CONTENT PLANNER */}
         {activeTab === 'posts' && (
           <div className="space-y-4">
-            {/* Filter Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative">
@@ -1008,7 +1194,6 @@ export default function SocialEconomyPage() {
               </div>
             </div>
 
-            {/* Posts Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {visiblePosts.map(p => (
                 <div
@@ -1050,7 +1235,6 @@ export default function SocialEconomyPage() {
                   </div>
 
                   <div className="space-y-3 pt-2 border-t border-slate-100">
-                    {/* Performance summary if recorded */}
                     {p.impressions !== undefined && (
                       <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2 rounded-lg text-center text-xs">
                         <div>
@@ -1138,7 +1322,7 @@ export default function SocialEconomyPage() {
               <div>
                 <h3 className="font-bold text-sm text-slate-900">Configured Social Profiles</h3>
                 <p className="text-xs text-slate-500">
-                  Profile URLs and display names only. Standalone zero-cost architecture with no OAuth tokens.
+                  Profiles automatically trigger background verification. Update follower counts manually or via CSV.
                 </p>
               </div>
               <button
@@ -1147,8 +1331,8 @@ export default function SocialEconomyPage() {
                     platform: 'linkedin',
                     display_name: '',
                     profile_url: '',
-                    collection_mode: 'manual',
-                    status: 'active'
+                    follower_count: '',
+                    notes: ''
                   });
                   setAccountModalOpen(true);
                 }}
@@ -1177,13 +1361,17 @@ export default function SocialEconomyPage() {
                         {platformMeta[acc.platform].label}
                       </span>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          acc.status === 'active'
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${
+                          acc.last_refresh_status === 'updated'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : acc.last_refresh_status === 'checking'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200 animate-pulse'
+                            : acc.last_refresh_status === 'access_restricted'
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
                             : 'bg-slate-100 text-slate-600'
                         }`}
                       >
-                        {acc.status}
+                        {acc.last_refresh_status ? acc.last_refresh_status.replace(/_/g, ' ') : 'idle'}
                       </span>
                     </div>
 
@@ -1197,25 +1385,49 @@ export default function SocialEconomyPage() {
                       {acc.profile_url}
                     </a>
 
-                    <div className="pt-2 border-t border-slate-100 space-y-1 text-[11px] text-slate-500">
+                    {/* Followers Display */}
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
                       <div>
-                        Mode:{' '}
-                        <strong className="text-slate-700 capitalize">
-                          {acc.collection_mode.replace('_', ' ')}
-                        </strong>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Current Followers
+                        </span>
+                        <span className="text-base font-black text-slate-900 font-mono">
+                          {acc.current_followers !== undefined && acc.current_followers !== null
+                            ? acc.current_followers.toLocaleString()
+                            : 'Not set'}
+                        </span>
                       </div>
-                      {acc.client_name && (
+                      <button
+                        onClick={() => {
+                          setEditingAccount({
+                            ...acc,
+                            follower_count: acc.current_followers ? String(acc.current_followers) : ''
+                          });
+                          setAccountModalOpen(true);
+                        }}
+                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800"
+                      >
+                        Update Count
+                      </button>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 space-y-1 text-[11px] text-slate-500">
+                      {acc.last_successful_check_at ? (
                         <div>
-                          Client: <strong className="text-slate-700">{acc.client_name}</strong>
-                        </div>
-                      )}
-                      {acc.last_refreshed_at && (
-                        <div>
-                          Last Checked:{' '}
-                          <span className="font-mono text-slate-600">
-                            {new Date(acc.last_refreshed_at).toLocaleString()}
+                          Last Verified:{' '}
+                          <span className="font-mono text-emerald-700">
+                            {new Date(acc.last_successful_check_at).toLocaleString()}
                           </span>
                         </div>
+                      ) : (
+                        acc.last_refreshed_at && (
+                          <div>
+                            Last Checked:{' '}
+                            <span className="font-mono text-slate-600">
+                              {new Date(acc.last_refreshed_at).toLocaleString()}
+                            </span>
+                          </div>
+                        )
                       )}
                       {acc.last_refresh_message && (
                         <div className="text-[10px] text-slate-400 italic leading-snug">
@@ -1238,7 +1450,10 @@ export default function SocialEconomyPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
-                          setEditingAccount(acc);
+                          setEditingAccount({
+                            ...acc,
+                            follower_count: acc.current_followers ? String(acc.current_followers) : ''
+                          });
                           setAccountModalOpen(true);
                         }}
                         className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
@@ -1328,13 +1543,12 @@ export default function SocialEconomyPage() {
         {/* TAB 5: CSV INGESTION & EXPORT */}
         {activeTab === 'import_export' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Import Card */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-sm text-slate-900">CSV Import Wizard</h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Upload exports from social platforms or client spreadsheets
+                    Upload exports from social platforms, follower counts, or client spreadsheets
                   </p>
                 </div>
                 <button
@@ -1370,7 +1584,6 @@ export default function SocialEconomyPage() {
 
               {csvError && <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl">{csvError}</div>}
 
-              {/* Preview table */}
               {csvPreviewRows.length > 0 && (
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between text-xs">
@@ -1383,7 +1596,7 @@ export default function SocialEconomyPage() {
                         <tr>
                           <th className="p-2">Title</th>
                           <th className="p-2">Platform</th>
-                          <th className="p-2">Status</th>
+                          <th className="p-2">Followers</th>
                           <th className="p-2 text-right">Views</th>
                           <th className="p-2 text-right">Likes</th>
                         </tr>
@@ -1393,7 +1606,7 @@ export default function SocialEconomyPage() {
                           <tr key={i}>
                             <td className="p-2 font-medium text-slate-800 truncate max-w-xs">{r.title}</td>
                             <td className="p-2 capitalize">{r.platform}</td>
-                            <td className="p-2">{r.status}</td>
+                            <td className="p-2 font-mono">{r.followers ?? '—'}</td>
                             <td className="p-2 text-right font-mono">{r.impressions ?? '—'}</td>
                             <td className="p-2 text-right font-mono">{r.likes ?? '—'}</td>
                           </tr>
@@ -1424,7 +1637,6 @@ export default function SocialEconomyPage() {
               )}
             </div>
 
-            {/* Export Card */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
               <div>
                 <h3 className="font-bold text-sm text-slate-900">Export & Backup</h3>
@@ -1435,7 +1647,7 @@ export default function SocialEconomyPage() {
                   <div className="font-bold text-slate-800">Export Details:</div>
                   <ul className="list-disc pl-4 space-y-1">
                     <li>Includes both manual logs and CSV-imported snapshots.</li>
-                    <li>Survives deployments and browser cache clearances.</li>
+                    <li>Survives deployments and browser restarts.</li>
                     <li>Format: UTF-8 standard RFC-4180 CSV.</li>
                   </ul>
                 </div>
@@ -1452,8 +1664,8 @@ export default function SocialEconomyPage() {
           </div>
         )}
 
-        {/* MODAL: ADD / EDIT ACCOUNT */}
-        {accountModalOpen && editingAccount && (
+        {/* MODAL: ADD / EDIT ACCOUNT (Cleaned: No Client Assoc, No Collection Mode, Follower Input Added) */}
+        {accountModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
               <div className="flex items-center justify-between p-4 border-b border-slate-100">
@@ -1505,41 +1717,20 @@ export default function SocialEconomyPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Collection Mode</label>
-                    <select
-                      value={editingAccount.collection_mode || 'manual'}
-                      onChange={e =>
-                        setEditingAccount({ ...editingAccount, collection_mode: e.target.value as CollectionMode })
-                      }
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden"
-                    >
-                      <option value="manual">Manual Entry</option>
-                      <option value="csv">CSV Import</option>
-                      <option value="public_crawl">Permitted Public Enrichment</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Client Association</label>
-                    <select
-                      value={editingAccount.client_id || ''}
-                      onChange={e =>
-                        setEditingAccount({
-                          ...editingAccount,
-                          client_id: e.target.value ? Number(e.target.value) : null
-                        })
-                      }
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden"
-                    >
-                      <option value="">No Client (Internal)</option>
-                      {clients.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Current Follower Count</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={editingAccount.follower_count ?? ''}
+                    onChange={e => setEditingAccount({ ...editingAccount, follower_count: e.target.value })}
+                    placeholder="e.g. 8200"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-800 outline-hidden"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Baseline follower count saved to history and updated automatically via background verification.
+                  </p>
                 </div>
 
                 <div>
@@ -1548,7 +1739,7 @@ export default function SocialEconomyPage() {
                     type="text"
                     value={editingAccount.notes || ''}
                     onChange={e => setEditingAccount({ ...editingAccount, notes: e.target.value })}
-                    placeholder="e.g. primary enterprise branding"
+                    placeholder="e.g. enterprise brand, tech vertical"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 outline-hidden"
                   />
                 </div>
@@ -1591,7 +1782,7 @@ export default function SocialEconomyPage() {
                     type="text"
                     value={editingPost.title || ''}
                     onChange={e => setEditingPost({ ...editingPost, title: e.target.value })}
-                    placeholder="e.g. VEYA v2 Launch Announcement"
+                    placeholder="e.g. Product Update"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden"
                     required
                   />
