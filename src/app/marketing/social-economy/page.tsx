@@ -142,9 +142,13 @@ export default function SocialEconomyPage() {
 
   // CSV Import state
   const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [csvPreviewRows, setCsvPreviewRows] = useState<any[]>([]);
+  const [csvRawRows, setCsvRawRows] = useState<string[][]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvImportType, setCsvImportType] = useState<'posts' | 'followers'>('posts');
+  const [csvColumnMapping, setCsvColumnMapping] = useState<Record<string, string>>({});
+  const [csvPreviewRows, setCsvPreviewRows] = useState<any[]>([]);
   const [csvError, setCsvError] = useState('');
+  const [csvImportResult, setCsvImportResult] = useState<any | null>(null);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -464,104 +468,230 @@ export default function SocialEconomyPage() {
     }
   };
 
-  // CSV Parsing
+  // Canonical field aliases dictionary
+  const FIELD_ALIASES: Record<string, string[]> = {
+    // Account fields
+    platform: ['platform', 'network', 'channel', 'social_platform'],
+    profile: ['account_name', 'display_name', 'profile_name', 'account', 'social_account', 'profile'],
+    profile_url: ['profile_url', 'account_url', 'social_url'],
+    followers: ['follower_count', 'followers', 'total_followers', 'subscriber_count'],
+    date: ['date', 'recorded_at', 'snapshot_date', 'captured_at', 'post_date', 'published_at', 'publication_date', 'scheduled_date'],
+    // Post fields
+    title: ['title', 'post_title', 'post', 'idea', 'name'],
+    caption: ['caption', 'content', 'text', 'caption_script_brief', 'hook_opening_line', 'hook'],
+    post_url: ['post_url', 'permalink', 'url', 'post_link', 'drive_link'],
+    status: ['status', 'posting_status', 'production_status', 'posted'],
+    // Performance fields
+    impressions: ['impressions', 'views'],
+    reach: ['reach'],
+    likes: ['likes', 'reactions'],
+    comments: ['comments'],
+    shares: ['shares', 'reposts'],
+    clicks: ['clicks'],
+    saves: ['saves'],
+    profile_visits: ['profile_visits']
+  };
+
+  // Helper to normalize header names
+  const normalizeCsvHeader = (h: string) => {
+    return h.toLowerCase().replace(/[\s\-_/\\()\[\]?.,:]+/g, '_').replace(/^_+|_+$/g, '');
+  };
+
+  // Helper to parse RFC-4180 CSV with multiline quotes and UTF-8 BOM
+  const parseRfc4180Csv = (text: string): string[][] => {
+    if (text.charCodeAt(0) === 0xFEFF) {
+      text = text.slice(1);
+    }
+    const rows: string[][] = [];
+    let currentRow: string[] = [];
+    let currentVal = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const nextChar = text[i + 1];
+      
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          currentVal += '"';
+          i++; // Skip escaped quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        currentRow.push(currentVal.trim());
+        currentVal = '';
+      } else if ((char === '\r' || char === '\n') && !inQuotes) {
+        if (char === '\r' && nextChar === '\n') {
+          i++;
+        }
+        currentRow.push(currentVal.trim());
+        if (currentRow.some(col => col.length > 0)) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentVal = '';
+      } else {
+        currentVal += char;
+      }
+    }
+    if (currentVal.length > 0 || currentRow.length > 0) {
+      currentRow.push(currentVal.trim());
+      if (currentRow.some(col => col.length > 0)) {
+        rows.push(currentRow);
+      }
+    }
+    return rows;
+  };
+
+  // Generate mapped preview records given raw rows, headers, mapping, and import type
+  const buildPreviewRecords = (
+    headers: string[],
+    rawRows: string[][],
+    mapping: Record<string, string>,
+    importType: 'posts' | 'followers'
+  ) => {
+    const records: any[] = [];
+    for (let i = 0; i < rawRows.length; i++) {
+      const vals = rawRows[i];
+      const rowByHeader: Record<string, string> = {};
+      headers.forEach((h, idx) => {
+        rowByHeader[h] = vals[idx] !== undefined ? vals[idx].trim() : '';
+      });
+
+      const getVal = (canonicalKey: string): string => {
+        const mappedCol = mapping[canonicalKey];
+        if (mappedCol && rowByHeader[mappedCol] !== undefined) {
+          return rowByHeader[mappedCol];
+        }
+        return '';
+      };
+
+      if (importType === 'followers') {
+        const followersRaw = getVal('followers');
+        const followers = followersRaw ? Number(followersRaw.replace(/,/g, '')) : undefined;
+        records.push({
+          platform: getVal('platform') || 'linkedin',
+          profile: getVal('profile') || getVal('profile_url'),
+          profile_url: getVal('profile_url'),
+          followers,
+          date: getVal('date') || new Date().toISOString().split('T')[0]
+        });
+      } else {
+        const titleRaw = getVal('title');
+        const captionRaw = getVal('caption');
+        const impressionsRaw = getVal('impressions');
+        const reachRaw = getVal('reach');
+        const likesRaw = getVal('likes');
+        const commentsRaw = getVal('comments');
+        const sharesRaw = getVal('shares');
+        const clicksRaw = getVal('clicks');
+        const savesRaw = getVal('saves');
+
+        records.push({
+          title: titleRaw || captionRaw.slice(0, 60) || `Post ${i + 1}`,
+          caption: captionRaw,
+          platform: getVal('platform') || 'linkedin',
+          profile: getVal('profile'),
+          date: getVal('date'),
+          status: getVal('status') || 'published',
+          post_url: getVal('post_url'),
+          impressions: impressionsRaw ? Number(impressionsRaw.replace(/,/g, '')) : undefined,
+          reach: reachRaw ? Number(reachRaw.replace(/,/g, '')) : undefined,
+          likes: likesRaw ? Number(likesRaw.replace(/,/g, '')) : undefined,
+          comments: commentsRaw ? Number(commentsRaw.replace(/,/g, '')) : undefined,
+          shares: sharesRaw ? Number(sharesRaw.replace(/,/g, '')) : undefined,
+          clicks: clicksRaw ? Number(clicksRaw.replace(/,/g, '')) : undefined,
+          saves: savesRaw ? Number(savesRaw.replace(/,/g, '')) : undefined
+        });
+      }
+    }
+    return records;
+  };
+
+  // CSV File Change Handler
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setCsvFile(file);
     setCsvError('');
+    setCsvImportResult(null);
     setCsvPreviewRows([]);
     setCsvHeaders([]);
+    setCsvRawRows([]);
 
     try {
       const text = await file.text();
-      const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-      if (lines.length < 2) {
+      const parsed = parseRfc4180Csv(text);
+      if (parsed.length < 2) {
         throw new Error('CSV must contain a header row and at least one data row.');
       }
 
-      const parseLine = (line: string) => {
-        const out: string[] = [];
-        let cur = '';
-        let quoted = false;
-        for (let i = 0; i < line.length; i++) {
-          const c = line[i];
-          if (c === '"' && line[i + 1] === '"' && quoted) {
-            cur += '"';
-            i++;
-          } else if (c === '"') {
-            quoted = !quoted;
-          } else if (c === ',' && !quoted) {
-            out.push(cur);
-            cur = '';
-          } else {
-            cur += c;
+      const originalHeaders = parsed[0];
+      const dataRows = parsed.slice(1);
+      setCsvHeaders(originalHeaders);
+      setCsvRawRows(dataRows);
+
+      // Auto-detect column mapping
+      const initialMapping: Record<string, string> = {};
+      const normHeaders = originalHeaders.map(h => ({
+        original: h,
+        normalized: normalizeCsvHeader(h)
+      }));
+
+      // Match each canonical field against the normalized headers
+      Object.entries(FIELD_ALIASES).forEach(([canonicalKey, aliases]) => {
+        for (const alias of aliases) {
+          const match = normHeaders.find(nh => nh.normalized === alias || nh.normalized.includes(alias));
+          if (match) {
+            initialMapping[canonicalKey] = match.original;
+            break;
           }
         }
-        out.push(cur);
-        return out;
-      };
+      });
 
-      const rawHeaders = parseLine(lines[0]).map(h => h.trim());
-      setCsvHeaders(rawHeaders);
+      // Auto-detect import type
+      const hasFollowerField = !!initialMapping.followers;
+      const hasPostFields = !!(initialMapping.title || initialMapping.caption || initialMapping.post_url);
+      const detectedType: 'posts' | 'followers' = (hasFollowerField && !hasPostFields) ? 'followers' : 'posts';
 
-      const rows: any[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const vals = parseLine(lines[i]);
-        const rowObj: Record<string, string> = {};
-        rawHeaders.forEach((h, idx) => {
-          rowObj[h.toLowerCase().replace(/[\s-]+/g, '_')] = vals[idx] ? vals[idx].trim() : '';
-        });
+      setCsvImportType(detectedType);
+      setCsvColumnMapping(initialMapping);
 
-        const pick = (...keys: string[]) => {
-          for (const k of keys) {
-            if (rowObj[k] !== undefined && rowObj[k] !== '') return rowObj[k];
-          }
-          return '';
-        };
-
-        const title = pick('title', 'post_title', 'post', 'name');
-        const platform = pick('platform', 'channel', 'network') || 'linkedin';
-        const date = pick('date', 'published_at', 'scheduled_date');
-        const impressions = pick('impressions', 'views');
-        const likes = pick('likes', 'reactions');
-        const comments = pick('comments');
-        const shares = pick('shares', 'reposts');
-        const followers = pick('followers', 'follower_count');
-
-        rows.push({
-          title: title || `Imported record ${i}`,
-          platform,
-          caption: pick('caption', 'content', 'text'),
-          profile: pick('profile', 'account', 'social_account'),
-          date,
-          status: pick('status') || 'published',
-          post_url: pick('url', 'permalink', 'post_url'),
-          followers: followers ? Number(followers.replace(/,/g, '')) : undefined,
-          impressions: impressions ? Number(impressions.replace(/,/g, '')) : undefined,
-          likes: likes ? Number(likes.replace(/,/g, '')) : undefined,
-          comments: comments ? Number(comments.replace(/,/g, '')) : undefined,
-          shares: shares ? Number(shares.replace(/,/g, '')) : undefined
-        });
-      }
-
-      setCsvPreviewRows(rows);
+      const preview = buildPreviewRecords(originalHeaders, dataRows, initialMapping, detectedType);
+      setCsvPreviewRows(preview);
     } catch (err: any) {
       setCsvError(err.message || 'Failed to read CSV file.');
     }
+  };
+
+  // Handler when user re-maps a column or changes import type
+  const handleMappingChange = (canonicalKey: string, selectedHeader: string) => {
+    const newMapping = { ...csvColumnMapping, [canonicalKey]: selectedHeader };
+    setCsvColumnMapping(newMapping);
+    const updatedPreview = buildPreviewRecords(csvHeaders, csvRawRows, newMapping, csvImportType);
+    setCsvPreviewRows(updatedPreview);
+  };
+
+  const handleImportTypeChange = (newType: 'posts' | 'followers') => {
+    setCsvImportType(newType);
+    const updatedPreview = buildPreviewRecords(csvHeaders, csvRawRows, csvColumnMapping, newType);
+    setCsvPreviewRows(updatedPreview);
   };
 
   const handleCommitImport = async () => {
     if (!csvPreviewRows.length || !csvFile) return;
     try {
       setImporting(true);
+      setCsvImportResult(null);
       const res = await fetch('/api/marketing/social-economy/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           filename: csvFile.name,
           rows: csvPreviewRows,
+          importType: csvImportType,
           updateMatching: true
         })
       });
@@ -569,12 +699,18 @@ export default function SocialEconomyPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Import failed');
 
-      setNotice({
-        type: 'success',
-        text: `Import complete: ${data.importedCount} added, ${data.updatedCount} updated, ${data.failedCount} errors.`
-      });
-      setCsvFile(null);
-      setCsvPreviewRows([]);
+      setCsvImportResult(data);
+      if (data.failedCount === 0) {
+        setNotice({
+          type: 'success',
+          text: `Import complete: ${data.importedCount} added, ${data.updatedCount} updated, 0 errors.`
+        });
+      } else {
+        setNotice({
+          type: 'info',
+          text: `Import finished with partial issues: ${data.importedCount} added, ${data.updatedCount} updated, ${data.failedCount} errors.`
+        });
+      }
       await reloadData();
     } catch (err: any) {
       setNotice({ type: 'error', text: err.message });
@@ -1603,48 +1739,271 @@ export default function SocialEconomyPage() {
 
               {csvError && <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl">{csvError}</div>}
 
-              {csvPreviewRows.length > 0 && (
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-700">Previewing {csvPreviewRows.length} rows</span>
+              {csvHeaders.length > 0 && csvPreviewRows.length > 0 && (
+                <div className="space-y-4 pt-2">
+                  {/* Mode Selector & Detected Stats */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">Import Target Type</span>
+                      <span className="text-[11px] text-slate-500">
+                        {csvRawRows.length} data rows detected in CSV
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => handleImportTypeChange('posts')}
+                        className={`px-3 py-1 rounded-md font-bold transition-all ${
+                          csvImportType === 'posts'
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Posts & Metrics
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleImportTypeChange('followers')}
+                        className={`px-3 py-1 rounded-md font-bold transition-all ${
+                          csvImportType === 'followers'
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Follower Snapshots
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Column Mapping Section */}
+                  <details className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 group" open>
+                    <summary className="text-xs font-bold text-slate-800 cursor-pointer flex items-center justify-between">
+                      <span>Column Mappings (Auto-Detected)</span>
+                      <span className="text-[11px] text-indigo-600 font-semibold group-open:rotate-180 transition-transform">
+                        ▼
+                      </span>
+                    </summary>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-200 text-xs">
+                      {csvImportType === 'posts' ? (
+                        <>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                              Post Title / Idea
+                            </label>
+                            <select
+                              value={csvColumnMapping.title || ''}
+                              onChange={e => handleMappingChange('title', e.target.value)}
+                              className="w-full text-[11px] p-1.5 bg-white border border-slate-200 rounded-lg"
+                            >
+                              <option value="">(None / Auto)</option>
+                              {csvHeaders.map(h => (
+                                <option key={h} value={h}>{h}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                              Caption / Content
+                            </label>
+                            <select
+                              value={csvColumnMapping.caption || ''}
+                              onChange={e => handleMappingChange('caption', e.target.value)}
+                              className="w-full text-[11px] p-1.5 bg-white border border-slate-200 rounded-lg"
+                            >
+                              <option value="">(None)</option>
+                              {csvHeaders.map(h => (
+                                <option key={h} value={h}>{h}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                              Platform / Channel
+                            </label>
+                            <select
+                              value={csvColumnMapping.platform || ''}
+                              onChange={e => handleMappingChange('platform', e.target.value)}
+                              className="w-full text-[11px] p-1.5 bg-white border border-slate-200 rounded-lg"
+                            >
+                              <option value="">(Default: LinkedIn)</option>
+                              {csvHeaders.map(h => (
+                                <option key={h} value={h}>{h}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                              Date / Schedule
+                            </label>
+                            <select
+                              value={csvColumnMapping.date || ''}
+                              onChange={e => handleMappingChange('date', e.target.value)}
+                              className="w-full text-[11px] p-1.5 bg-white border border-slate-200 rounded-lg"
+                            >
+                              <option value="">(None)</option>
+                              {csvHeaders.map(h => (
+                                <option key={h} value={h}>{h}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                              Status
+                            </label>
+                            <select
+                              value={csvColumnMapping.status || ''}
+                              onChange={e => handleMappingChange('status', e.target.value)}
+                              className="w-full text-[11px] p-1.5 bg-white border border-slate-200 rounded-lg"
+                            >
+                              <option value="">(Default: Published)</option>
+                              {csvHeaders.map(h => (
+                                <option key={h} value={h}>{h}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                              Post URL / Link
+                            </label>
+                            <select
+                              value={csvColumnMapping.post_url || ''}
+                              onChange={e => handleMappingChange('post_url', e.target.value)}
+                              className="w-full text-[11px] p-1.5 bg-white border border-slate-200 rounded-lg"
+                            >
+                              <option value="">(None)</option>
+                              {csvHeaders.map(h => (
+                                <option key={h} value={h}>{h}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                              Follower Count
+                            </label>
+                            <select
+                              value={csvColumnMapping.followers || ''}
+                              onChange={e => handleMappingChange('followers', e.target.value)}
+                              className="w-full text-[11px] p-1.5 bg-white border border-slate-200 rounded-lg"
+                            >
+                              <option value="">(Select Column)</option>
+                              {csvHeaders.map(h => (
+                                <option key={h} value={h}>{h}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                              Profile Name / URL
+                            </label>
+                            <select
+                              value={csvColumnMapping.profile || ''}
+                              onChange={e => handleMappingChange('profile', e.target.value)}
+                              className="w-full text-[11px] p-1.5 bg-white border border-slate-200 rounded-lg"
+                            >
+                              <option value="">(Select Column)</option>
+                              {csvHeaders.map(h => (
+                                <option key={h} value={h}>{h}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                              Date / Timestamp
+                            </label>
+                            <select
+                              value={csvColumnMapping.date || ''}
+                              onChange={e => handleMappingChange('date', e.target.value)}
+                              className="w-full text-[11px] p-1.5 bg-white border border-slate-200 rounded-lg"
+                            >
+                              <option value="">(Auto: Today)</option>
+                              {csvHeaders.map(h => (
+                                <option key={h} value={h}>{h}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </details>
+
+                  {/* Preview Table */}
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <span className="font-bold text-slate-700">Previewing Mapped Records ({csvPreviewRows.length} total)</span>
                     <span className="text-slate-400">Showing first 5 rows</span>
                   </div>
                   <div className="overflow-x-auto border border-slate-200 rounded-xl">
                     <table className="w-full text-[11px] text-left">
                       <thead className="bg-slate-50 text-slate-500 font-bold">
-                        <tr>
-                          <th className="p-2">Title</th>
-                          <th className="p-2">Platform</th>
-                          <th className="p-2">Followers</th>
-                          <th className="p-2 text-right">Views</th>
-                          <th className="p-2 text-right">Likes</th>
-                        </tr>
+                        {csvImportType === 'posts' ? (
+                          <tr>
+                            <th className="p-2">Title / Idea</th>
+                            <th className="p-2">Platform</th>
+                            <th className="p-2">Date</th>
+                            <th className="p-2">Status</th>
+                            <th className="p-2">Link</th>
+                          </tr>
+                        ) : (
+                          <tr>
+                            <th className="p-2">Account / Profile</th>
+                            <th className="p-2">Platform</th>
+                            <th className="p-2">Followers</th>
+                            <th className="p-2">Observation Date</th>
+                          </tr>
+                        )}
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {csvPreviewRows.slice(0, 5).map((r, i) => (
                           <tr key={i}>
-                            <td className="p-2 font-medium text-slate-800 truncate max-w-xs">{r.title}</td>
-                            <td className="p-2 capitalize">{r.platform}</td>
-                            <td className="p-2 font-mono">{r.followers ?? '—'}</td>
-                            <td className="p-2 text-right font-mono">{r.impressions ?? '—'}</td>
-                            <td className="p-2 text-right font-mono">{r.likes ?? '—'}</td>
+                            {csvImportType === 'posts' ? (
+                              <>
+                                <td className="p-2 font-medium text-slate-800 truncate max-w-xs">{r.title}</td>
+                                <td className="p-2 capitalize">{r.platform}</td>
+                                <td className="p-2 font-mono text-slate-500">{r.date || '—'}</td>
+                                <td className="p-2">
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold uppercase text-[9px]">
+                                    {r.status}
+                                  </span>
+                                </td>
+                                <td className="p-2 truncate max-w-[120px] text-indigo-600 font-mono">
+                                  {r.post_url ? (
+                                    <span title={r.post_url}>Link</span>
+                                  ) : '—'}
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="p-2 font-medium text-slate-800">{r.profile || '—'}</td>
+                                <td className="p-2 capitalize">{r.platform}</td>
+                                <td className="p-2 font-mono font-bold text-slate-900">{r.followers?.toLocaleString() ?? '—'}</td>
+                                <td className="p-2 font-mono text-slate-500">{r.date || '—'}</td>
+                              </>
+                            )}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
 
+                  {/* Actions */}
                   <div className="flex justify-end gap-2 pt-2">
                     <button
+                      type="button"
                       onClick={() => {
                         setCsvFile(null);
                         setCsvPreviewRows([]);
+                        setCsvHeaders([]);
+                        setCsvRawRows([]);
+                        setCsvImportResult(null);
                       }}
-                      className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600"
+                      className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
                     >
-                      Cancel
+                      Clear
                     </button>
                     <button
+                      type="button"
                       onClick={handleCommitImport}
                       disabled={importing}
                       className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition-all disabled:opacity-50"
@@ -1652,6 +2011,30 @@ export default function SocialEconomyPage() {
                       {importing ? 'Importing...' : `Confirm & Ingest ${csvPreviewRows.length} Records`}
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Import Results & Error Breakdown Modal/Card */}
+              {csvImportResult && (
+                <div className={`p-4 rounded-xl border text-xs space-y-2 ${
+                  csvImportResult.failedCount === 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'
+                }`}>
+                  <div className="flex items-center justify-between font-bold">
+                    <span>Import Summary</span>
+                    <span>
+                      {csvImportResult.importedCount} added, {csvImportResult.updatedCount} updated, {csvImportResult.failedCount} errors
+                    </span>
+                  </div>
+                  {csvImportResult.errors && csvImportResult.errors.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <span className="font-semibold block text-[11px] text-red-700">Row-level issues:</span>
+                      <ul className="max-h-32 overflow-y-auto space-y-1 text-[11px] text-red-600 list-disc pl-4">
+                        {csvImportResult.errors.map((err: any, idx: number) => (
+                          <li key={idx}>Row {err.row}: {err.reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

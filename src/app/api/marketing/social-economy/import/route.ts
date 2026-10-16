@@ -2,6 +2,38 @@ import { NextResponse } from 'next/server';
 import { getTenantContext } from '@/lib/auth';
 import { queryAll, queryFirst, runQuery } from '@/lib/db';
 
+function normalizePostStatus(raw: any): 'draft' | 'planned' | 'reminder_due' | 'published' | 'archived' {
+  if (!raw) return 'published';
+  const s = String(raw).toLowerCase().trim();
+  if (['published', 'posted', 'done', 'live', 'completed', 'yes'].includes(s)) return 'published';
+  if (['draft', 'in_progress', 'producing', 'wip', 'writing', 'not done'].includes(s)) return 'draft';
+  if (['planned', 'scheduled', 'upcoming', 'due', 'due today', 'overdue', 'reminder_due'].includes(s)) return 'planned';
+  if (['archived', 'cancelled', 'killed', 'deleted'].includes(s)) return 'archived';
+  return 'published';
+}
+
+function parseFlexibleIsoDate(dateStr: any): string | null {
+  if (!dateStr) return null;
+  const clean = String(dateStr).trim();
+  if (!clean) return null;
+  // Format DD-MMM-YY or DD-MMM-YYYY (e.g. 09-Oct-26)
+  const match = clean.match(/^(\d{1,2})[-/]([A-Za-z]{3})[-/](\d{2,4})$/);
+  if (match) {
+    const day = match[1].padStart(2, '0');
+    const monthNames = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const monthIdx = monthNames.indexOf(match[2].toLowerCase());
+    if (monthIdx !== -1) {
+      const month = String(monthIdx + 1).padStart(2, '0');
+      let year = match[3];
+      if (year.length === 2) year = '20' + year;
+      return `${year}-${month}-${day}`;
+    }
+  }
+  const d = new Date(clean);
+  if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  return clean;
+}
+
 export async function POST(req: Request) {
   try {
     const ctx = await getTenantContext();
@@ -28,16 +60,19 @@ export async function POST(req: Request) {
       // Check if this row is an account/follower observation or a post
       const isFollowerObservation = r.followers !== undefined || r.follower_count !== undefined;
 
-      // Required fields for post: title, platform
-      if (!isFollowerObservation && (!r.title || !r.platform)) {
+      // Required fields for post: title or caption, and platform
+      const resolvedTitle = (r.title || r.caption || r.post_title || r.idea || `Post ${rowIdx}`).trim();
+      if (!isFollowerObservation && !resolvedTitle) {
         failedCount++;
-        errors.push({ row: rowIdx, reason: 'Missing required title or platform for post.' });
+        errors.push({ row: rowIdx, reason: 'Missing required title or caption for post.' });
         continue;
       }
 
       const platformClean = String(r.platform || 'linkedin').toLowerCase().trim();
       const validPlatforms = ['x', 'facebook', 'instagram', 'linkedin', 'reddit'];
       const normalizedPlatform = validPlatforms.find(p => platformClean.includes(p)) || 'linkedin';
+      const normalizedStatus = normalizePostStatus(r.status);
+      const parsedDate = parseFlexibleIsoDate(r.published_at || r.date || r.scheduled_at);
 
       try {
         // Resolve social account if profile name/url provided
@@ -58,7 +93,7 @@ export async function POST(req: Request) {
         if (accountId && (r.followers !== undefined || r.follower_count !== undefined)) {
           const count = Number(r.followers ?? r.follower_count);
           if (!isNaN(count) && count >= 0) {
-            const timestamp = r.date || r.observation_timestamp || new Date().toISOString();
+            const timestamp = parsedDate || new Date().toISOString();
             await runQuery(
               `INSERT INTO social_follower_snapshots (
                 organisation_id, social_account_id, follower_count, source, observation_timestamp, notes, created_at
@@ -74,8 +109,8 @@ export async function POST(req: Request) {
           }
         }
 
-        // If row has post title, process as post
-        if (r.title) {
+        // If row has post title/caption, process as post
+        if (resolvedTitle) {
           let existingPost: any = null;
           if (r.post_url) {
             existingPost = await queryFirst(
@@ -85,7 +120,7 @@ export async function POST(req: Request) {
           } else {
             existingPost = await queryFirst(
               'SELECT id FROM social_posts WHERE organisation_id = ? AND title = ? AND platform = ?',
-              [ctx.activeOrg.id, r.title, normalizedPlatform]
+              [ctx.activeOrg.id, resolvedTitle, normalizedPlatform]
             );
           }
 
@@ -104,8 +139,8 @@ export async function POST(req: Request) {
               [
                 r.caption || r.content,
                 r.post_url,
-                r.published_at || r.date,
-                r.status ? String(r.status).toLowerCase() : undefined,
+                parsedDate,
+                normalizedStatus,
                 accountId,
                 postId,
                 ctx.activeOrg.id
@@ -123,11 +158,11 @@ export async function POST(req: Request) {
                 accountId,
                 ctx.user.id,
                 normalizedPlatform,
-                String(r.title).trim(),
+                resolvedTitle,
                 r.caption || r.content || '',
                 r.post_url || '',
-                r.published_at || r.date || null,
-                r.status ? String(r.status).toLowerCase() : 'published'
+                parsedDate,
+                normalizedStatus
               ]
             );
             postId = Number(postRes.lastInsertRowid);
