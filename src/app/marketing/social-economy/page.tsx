@@ -94,6 +94,15 @@ const platformMeta: Record<Platform, { label: string; color: string; bg: string 
   reddit: { label: 'Reddit', color: '#ff4500', bg: 'bg-[#ff4500]/10 text-[#ff4500] border-[#ff4500]/20' }
 };
 
+const getPlatform = (p?: string | null) => {
+  const plat = (p || '').toLowerCase() as Platform;
+  return platformMeta[plat] || {
+    label: (p || 'Channel').toUpperCase(),
+    color: '#64748b',
+    bg: 'bg-slate-100 text-slate-700 border-slate-200'
+  };
+};
+
 export default function SocialEconomyPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -1255,19 +1264,19 @@ export default function SocialEconomyPage() {
                             </td>
                             <td className="py-3 pr-4">
                               <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${platformMeta[p.platform].bg}`}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${getPlatform(p.platform).bg}`}
                               >
-                                {platformMeta[p.platform].label}
+                                {getPlatform(p.platform).label}
                               </span>
                             </td>
                             <td className="py-3 pr-4 text-slate-600 font-mono">
-                              {p.published_at ? p.published_at.split('T')[0] : '—'}
+                              {p.published_at ? String(p.published_at).split('T')[0] : '—'}
                             </td>
                             <td className="py-3 pr-4 text-right font-mono text-slate-900">
-                              {p.impressions !== undefined ? p.impressions.toLocaleString() : '—'}
+                              {typeof p.impressions === 'number' ? p.impressions.toLocaleString() : '—'}
                             </td>
                             <td className="py-3 pr-4 text-right font-mono text-slate-900">
-                              {interactions.toLocaleString()}
+                              {typeof interactions === 'number' ? interactions.toLocaleString() : '0'}
                             </td>
                             <td className="py-3 pr-4 text-right">
                               <span className="font-bold text-indigo-600 font-mono">
@@ -1358,9 +1367,9 @@ export default function SocialEconomyPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${platformMeta[p.platform].bg}`}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${getPlatform(p.platform).bg}`}
                       >
-                        {platformMeta[p.platform].label}
+                        {getPlatform(p.platform).label}
                       </span>
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -1390,15 +1399,17 @@ export default function SocialEconomyPage() {
                   </div>
 
                   <div className="space-y-3 pt-2 border-t border-slate-100">
-                    {p.impressions !== undefined && (
+                    {(typeof p.impressions === 'number' || typeof p.likes === 'number' || p.engagement_rate != null) && (
                       <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2 rounded-lg text-center text-xs">
                         <div>
                           <span className="text-[10px] text-slate-400 block">Impressions</span>
-                          <span className="font-bold text-slate-900">{p.impressions.toLocaleString()}</span>
+                          <span className="font-bold text-slate-900">
+                            {typeof p.impressions === 'number' ? p.impressions.toLocaleString() : '—'}
+                          </span>
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400 block">Likes</span>
-                          <span className="font-bold text-slate-900">{p.likes ?? 0}</span>
+                          <span className="font-bold text-slate-900">{typeof p.likes === 'number' ? p.likes.toLocaleString() : 0}</span>
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400 block">Rate</span>
@@ -1507,13 +1518,13 @@ export default function SocialEconomyPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${platformMeta[acc.platform].bg}`}
+                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${getPlatform(acc.platform).bg}`}
                       >
                         <span
                           className="w-1.5 h-1.5 rounded-full"
-                          style={{ backgroundColor: platformMeta[acc.platform].color }}
+                          style={{ backgroundColor: getPlatform(acc.platform).color }}
                         />
-                        {platformMeta[acc.platform].label}
+                        {getPlatform(acc.platform).label}
                       </span>
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${
@@ -1662,21 +1673,29 @@ export default function SocialEconomyPage() {
                         <td className="py-3 pr-4 font-bold text-slate-900 max-w-xs truncate">{p.title}</td>
                         <td className="py-3 pr-4">
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${platformMeta[p.platform].bg}`}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${getPlatform(p.platform).bg}`}
                           >
-                            {platformMeta[p.platform].label}
+                            {getPlatform(p.platform).label}
                           </span>
                         </td>
                         <td className="py-3 pr-4 text-right font-mono text-slate-800">
-                          {p.impressions !== undefined ? p.impressions.toLocaleString() : '—'}
+                          {typeof p.impressions === 'number' ? p.impressions.toLocaleString() : '—'}
                         </td>
                         <td className="py-3 pr-4 text-right font-mono text-slate-800">
-                          {p.reach !== undefined ? p.reach.toLocaleString() : '—'}
+                          {typeof p.reach === 'number' ? p.reach.toLocaleString() : '—'}
                         </td>
-                        <td className="py-3 pr-4 text-right font-mono text-slate-800">{p.likes ?? '—'}</td>
-                        <td className="py-3 pr-4 text-right font-mono text-slate-800">{p.comments ?? '—'}</td>
-                        <td className="py-3 pr-4 text-right font-mono text-slate-800">{p.shares ?? '—'}</td>
-                        <td className="py-3 pr-4 text-right font-mono text-slate-800">{p.clicks ?? '—'}</td>
+                        <td className="py-3 pr-4 text-right font-mono text-slate-800">
+                          {typeof p.likes === 'number' ? p.likes.toLocaleString() : '—'}
+                        </td>
+                        <td className="py-3 pr-4 text-right font-mono text-slate-800">
+                          {typeof p.comments === 'number' ? p.comments.toLocaleString() : '—'}
+                        </td>
+                        <td className="py-3 pr-4 text-right font-mono text-slate-800">
+                          {typeof p.shares === 'number' ? p.shares.toLocaleString() : '—'}
+                        </td>
+                        <td className="py-3 pr-4 text-right font-mono text-slate-800">
+                          {typeof p.clicks === 'number' ? p.clicks.toLocaleString() : '—'}
+                        </td>
                         <td className="py-3 pr-4 text-right font-mono font-bold text-indigo-600">
                           {p.engagement_rate !== null && p.engagement_rate !== undefined
                             ? `${p.engagement_rate}%`
@@ -2246,7 +2265,7 @@ export default function SocialEconomyPage() {
                     <option value="">Select an account</option>
                     {accounts.map(a => (
                       <option key={a.id} value={a.id}>
-                        {a.display_name} ({platformMeta[a.platform].label})
+                        {a.display_name} ({getPlatform(a.platform).label})
                       </option>
                     ))}
                   </select>
