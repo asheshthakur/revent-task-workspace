@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getTenantContext } from '@/lib/auth';
-import { queryAll, queryFirst, runQuery } from '@/lib/db';
+import { queryAll, queryFirst, queryRun, runQuery } from '@/lib/db';
 import { isSafePublicHttpUrl, performCompliantPublicRefresh } from '@/lib/socialCrawler';
 
 export async function GET(req: Request) {
@@ -218,7 +218,7 @@ export async function POST(req: Request) {
       message: 'Social account created. Background public check initiated.'
     });
   } catch (err: any) {
-    console.error('Error in POST /api/marketing/social-economy/accounts:', err);
+    console.error('Error in POST /api/marketing/social-economy/accounts:', err?.message || err, err?.stack);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

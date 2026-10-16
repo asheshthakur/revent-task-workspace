@@ -130,6 +130,8 @@ export async function queryRun(sql: string, params: any[] = []): Promise<RunResu
   throw new Error('Database connection not available (neither Cloudflare D1 nor SQLite found).');
 }
 
+export const runQuery = queryRun;
+
 /**
  * Central audit logging helper (async)
  */
