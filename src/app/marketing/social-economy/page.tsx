@@ -134,6 +134,10 @@ export default function SocialEconomyPage() {
     notes: ''
   });
   const [editingPost, setEditingPost] = useState<Partial<SocialPost> | null>(null);
+  const [savingPost, setSavingPost] = useState(false);
+  const [postEditError, setPostEditError] = useState('');
+  const [postToDelete, setPostToDelete] = useState<SocialPost | null>(null);
+  const [deletingPost, setDeletingPost] = useState(false);
   const [selectedPostForMetrics, setSelectedPostForMetrics] = useState<SocialPost | null>(null);
 
   // Metrics form state
@@ -396,28 +400,78 @@ export default function SocialEconomyPage() {
   // Handle Post Save
   const handleSavePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingPost?.title || !editingPost?.platform) {
-      setNotice({ type: 'error', text: 'Title and platform are required.' });
+    setPostEditError('');
+
+    if (!editingPost?.title || !editingPost?.title.trim()) {
+      setPostEditError('Post title is required.');
+      return;
+    }
+    if (!editingPost?.platform) {
+      setPostEditError('Platform is required.');
       return;
     }
 
     try {
+      setSavingPost(true);
       const isEdit = !!editingPost.id;
+      const payload: any = {
+        ...editingPost,
+        title: editingPost.title.trim(),
+        platform: editingPost.platform.toLowerCase(),
+        status: editingPost.status || 'draft',
+        post_url: editingPost.post_url || '',
+        social_account_id: editingPost.social_account_id ? Number(editingPost.social_account_id) : null
+      };
+
+      // Set scheduled_at and published_at accurately
+      if (editingPost.scheduled_at) {
+        payload.scheduled_at = editingPost.scheduled_at;
+        if (editingPost.status === 'published' && !editingPost.published_at) {
+          payload.published_at = editingPost.scheduled_at;
+        }
+      }
+
       const res = await fetch('/api/marketing/social-economy/posts', {
         method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingPost)
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to save post');
 
-      setNotice({ type: 'success', text: isEdit ? 'Post updated.' : 'Post created.' });
+      setNotice({ type: 'success', text: isEdit ? `Post "${payload.title}" updated successfully.` : `Post "${payload.title}" created successfully.` });
       setPostModalOpen(false);
       setEditingPost(null);
+      setPostEditError('');
       await reloadData();
     } catch (err: any) {
-      setNotice({ type: 'error', text: err.message });
+      setPostEditError(err.message || 'Failed to save post.');
+      setNotice({ type: 'error', text: err.message || 'Failed to save post.' });
+    } finally {
+      setSavingPost(false);
+    }
+  };
+
+  // Handle Post Delete
+  const handleDeletePost = async () => {
+    if (!postToDelete) return;
+    try {
+      setDeletingPost(true);
+      const res = await fetch(`/api/marketing/social-economy/posts?id=${postToDelete.id}`, {
+        method: 'DELETE'
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete post');
+
+      setNotice({ type: 'success', text: data.message || `Post "${postToDelete.title}" deleted.` });
+      setPostToDelete(null);
+      await reloadData();
+    } catch (err: any) {
+      setNotice({ type: 'error', text: err.message || 'Failed to delete post.' });
+    } finally {
+      setDeletingPost(false);
     }
   };
 
@@ -1396,6 +1450,16 @@ export default function SocialEconomyPage() {
                         Account: <strong className="text-slate-600">{p.account_name}</strong>
                       </span>
                     )}
+
+                    {(p.scheduled_at || p.published_at) && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-mono">
+                        <Calendar className="w-3 h-3 text-slate-400" />
+                        <span>{p.status === 'published' ? 'Published:' : 'Date:'}</span>
+                        <span className="text-slate-600 font-bold">
+                          {String(p.scheduled_at || p.published_at).split('T')[0]}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-3 pt-2 border-t border-slate-100">
@@ -1426,13 +1490,26 @@ export default function SocialEconomyPage() {
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => {
-                            setEditingPost(p);
+                            setEditingPost({
+                              ...p,
+                              scheduled_at: (p.scheduled_at || p.published_at)
+                                ? String(p.scheduled_at || p.published_at).split('T')[0]
+                                : ''
+                            });
+                            setPostEditError('');
                             setPostModalOpen(true);
                           }}
                           className="p-1.5 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-100"
                           title="Edit post"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setPostToDelete(p)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                          title={p.status === 'draft' ? 'Delete draft' : 'Delete post'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => {
@@ -2191,20 +2268,36 @@ export default function SocialEconomyPage() {
             <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
               <div className="flex items-center justify-between p-4 border-b border-slate-100">
                 <h3 className="font-bold text-sm text-slate-900">{editingPost.id ? 'Edit Post' : 'Create Post'}</h3>
-                <button onClick={() => setPostModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg">
+                <button
+                  type="button"
+                  disabled={savingPost}
+                  onClick={() => {
+                    setPostModalOpen(false);
+                    setPostEditError('');
+                  }}
+                  className="p-1 hover:bg-slate-100 rounded-lg disabled:opacity-50"
+                >
                   <X className="w-4 h-4 text-slate-400" />
                 </button>
               </div>
 
               <form onSubmit={handleSavePost} className="p-5 space-y-4 text-xs">
+                {postEditError && (
+                  <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                    <span>{postEditError}</span>
+                  </div>
+                )}
+
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Post Title</label>
+                  <label className="font-bold text-slate-700 block mb-1">Post Title *</label>
                   <input
                     type="text"
                     value={editingPost.title || ''}
+                    disabled={savingPost}
                     onChange={e => setEditingPost({ ...editingPost, title: e.target.value })}
                     placeholder="e.g. Product Update"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden disabled:opacity-60"
                     required
                   />
                 </div>
@@ -2214,19 +2307,21 @@ export default function SocialEconomyPage() {
                   <textarea
                     rows={4}
                     value={editingPost.caption || ''}
+                    disabled={savingPost}
                     onChange={e => setEditingPost({ ...editingPost, caption: e.target.value })}
                     placeholder="Write copy or notes for the social post..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 outline-hidden"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 outline-hidden disabled:opacity-60"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Platform</label>
+                    <label className="font-bold text-slate-700 block mb-1">Platform *</label>
                     <select
                       value={editingPost.platform}
+                      disabled={savingPost}
                       onChange={e => setEditingPost({ ...editingPost, platform: e.target.value as Platform })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden disabled:opacity-60"
                     >
                       <option value="linkedin">LinkedIn</option>
                       <option value="x">X</option>
@@ -2239,8 +2334,9 @@ export default function SocialEconomyPage() {
                     <label className="font-bold text-slate-700 block mb-1">Status</label>
                     <select
                       value={editingPost.status || 'draft'}
+                      disabled={savingPost}
                       onChange={e => setEditingPost({ ...editingPost, status: e.target.value as PostStatus })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden disabled:opacity-60"
                     >
                       <option value="draft">Draft</option>
                       <option value="planned">Planned</option>
@@ -2254,15 +2350,16 @@ export default function SocialEconomyPage() {
                   <label className="font-bold text-slate-700 block mb-1">Target Social Account</label>
                   <select
                     value={editingPost.social_account_id || ''}
+                    disabled={savingPost}
                     onChange={e =>
                       setEditingPost({
                         ...editingPost,
                         social_account_id: e.target.value ? Number(e.target.value) : null
                       })
                     }
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden disabled:opacity-60"
                   >
-                    <option value="">Select an account</option>
+                    <option value="">None (Generic / Unlinked)</option>
                     {accounts.map(a => (
                       <option key={a.id} value={a.id}>
                         {a.display_name} ({getPlatform(a.platform).label})
@@ -2276,9 +2373,10 @@ export default function SocialEconomyPage() {
                     <label className="font-bold text-slate-700 block mb-1">Date</label>
                     <input
                       type="date"
-                      value={editingPost.scheduled_at ? editingPost.scheduled_at.split('T')[0] : ''}
+                      value={editingPost.scheduled_at ? String(editingPost.scheduled_at).split('T')[0] : ''}
+                      disabled={savingPost}
                       onChange={e => setEditingPost({ ...editingPost, scheduled_at: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 outline-hidden disabled:opacity-60"
                     />
                   </div>
                   <div>
@@ -2286,9 +2384,10 @@ export default function SocialEconomyPage() {
                     <input
                       type="url"
                       value={editingPost.post_url || ''}
+                      disabled={savingPost}
                       onChange={e => setEditingPost({ ...editingPost, post_url: e.target.value })}
                       placeholder="https://..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 outline-hidden"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 outline-hidden disabled:opacity-60"
                     />
                   </div>
                 </div>
@@ -2296,16 +2395,22 @@ export default function SocialEconomyPage() {
                 <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                   <button
                     type="button"
-                    onClick={() => setPostModalOpen(false)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50"
+                    disabled={savingPost}
+                    onClick={() => {
+                      setPostModalOpen(false);
+                      setPostEditError('');
+                    }}
+                    className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-bold text-white shadow-xs"
+                    disabled={savingPost}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-bold text-white shadow-xs disabled:opacity-50 flex items-center gap-2"
                   >
-                    Save Post
+                    {savingPost && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{savingPost ? 'Saving...' : 'Save Post'}</span>
                   </button>
                 </div>
               </form>
@@ -2423,6 +2528,70 @@ export default function SocialEconomyPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: DELETE CONFIRMATION */}
+        {postToDelete && (
+          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                <div className="flex items-center gap-2 text-red-600">
+                  <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </div>
+                  <h3 className="font-bold text-sm text-slate-900">
+                    {postToDelete.status === 'draft' ? 'Delete Draft Post' : 'Delete Social Post'}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  disabled={deletingPost}
+                  onClick={() => setPostToDelete(null)}
+                  className="p-1 hover:bg-slate-100 rounded-lg disabled:opacity-50"
+                >
+                  <X className="w-4 h-4 text-slate-400" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4 text-xs">
+                <p className="text-slate-600 leading-relaxed">
+                  Are you sure you want to delete post <strong className="text-slate-900 font-bold">"{postToDelete.title}"</strong> (ID #{postToDelete.id})?
+                </p>
+
+                <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-1 font-mono text-[11px] text-slate-600">
+                  <div>Platform: <strong className="text-slate-800 capitalize">{postToDelete.platform}</strong></div>
+                  <div>Status: <strong className="text-slate-800 uppercase">{postToDelete.status}</strong></div>
+                  {postToDelete.account_name && (
+                    <div>Target Account: <strong className="text-slate-800">{postToDelete.account_name}</strong></div>
+                  )}
+                </div>
+
+                <p className="text-slate-500 text-[11px] leading-relaxed">
+                  This will remove the post and its associated performance snapshots from the Social Economy content planner in Cloudflare D1. This action cannot be undone.
+                </p>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    disabled={deletingPost}
+                    onClick={() => setPostToDelete(null)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={deletingPost}
+                    onClick={handleDeletePost}
+                    className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 font-bold text-white shadow-xs disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {deletingPost && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{deletingPost ? 'Deleting...' : 'Confirm Delete'}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
