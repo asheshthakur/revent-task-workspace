@@ -204,29 +204,36 @@ export default function SocialEconomyPage() {
 
     const platformsList: Platform[] = ['linkedin', 'x', 'instagram', 'facebook', 'reddit'];
 
+    // Map of active account IDs in current workspace for fast lookup
+    const activeAccountIds = new Set(accounts.filter(a => a.status === 'active').map(a => a.id));
+
     return platformsList.map(platform => {
+      // 1. Filter active accounts for this platform
       const platAccounts = accounts.filter(a => a.platform === platform && a.status === 'active');
       
-      // Sum latest valid follower count across accounts
-      let currentTotal = 0;
       let hasAnyAccount = platAccounts.length > 0;
       let hasCurrentFollowers = false;
 
-      platAccounts.forEach(acc => {
-        if (acc.current_followers !== undefined && acc.current_followers !== null) {
-          currentTotal += acc.current_followers;
-          hasCurrentFollowers = true;
-        }
-      });
-
-      // Calculate baseline follower count at or immediately prior to cutoff
-      let baselineTotal = 0;
-      let baselineAccountsFound = 0;
+      // Track matched accounts that have both current followers and a valid baseline observation
+      let matchedCurrentTotal = 0;
+      let matchedBaselineTotal = 0;
+      let accountsWithGrowthHistory = 0;
+      let overallCurrentTotal = 0;
       let latestObsDate: string | null = null;
 
       platAccounts.forEach(acc => {
+        const curFollowers = (acc.current_followers !== undefined && acc.current_followers !== null)
+          ? acc.current_followers
+          : null;
+
+        if (curFollowers !== null) {
+          overallCurrentTotal += curFollowers;
+          hasCurrentFollowers = true;
+        }
+
+        // Only consider snapshots belonging to this specific active account
         const accSnaps = followerSnapshots
-          .filter(s => s.social_account_id === acc.id)
+          .filter(s => s.social_account_id === acc.id && activeAccountIds.has(s.social_account_id))
           .sort((a, b) => new Date(a.observation_timestamp).getTime() - new Date(b.observation_timestamp).getTime());
 
         if (accSnaps.length > 0) {
@@ -235,15 +242,23 @@ export default function SocialEconomyPage() {
             latestObsDate = lastSnap.observation_timestamp;
           }
 
-          // Find baseline snapshot: closest snapshot at or before cutoffDate
+          // Case A: Look for closest historical snapshot at or before cutoffDate
           const priorSnaps = accSnaps.filter(s => s.observation_timestamp <= cutoffIso);
-          if (priorSnaps.length > 0) {
-            baselineTotal += priorSnaps[priorSnaps.length - 1].follower_count;
-            baselineAccountsFound++;
-          } else if (accSnaps.length >= 2) {
-            // If account was created within the window, use earliest snapshot as baseline
-            baselineTotal += accSnaps[0].follower_count;
-            baselineAccountsFound++;
+          if (priorSnaps.length > 0 && curFollowers !== null) {
+            const baselineSnap = priorSnaps[priorSnaps.length - 1];
+            matchedCurrentTotal += curFollowers;
+            matchedBaselineTotal += baselineSnap.follower_count;
+            accountsWithGrowthHistory++;
+          } else if (accSnaps.length >= 2 && curFollowers !== null) {
+            // Case B: Account was added partway through selected period, but has at least two observations
+            const baselineSnap = accSnaps[0];
+            const latestSnap = accSnaps[accSnaps.length - 1];
+            // Only consider as history if there is a distinct baseline from the current observation
+            if (latestSnap.follower_count !== baselineSnap.follower_count || accSnaps.length > 1) {
+              matchedCurrentTotal += curFollowers;
+              matchedBaselineTotal += baselineSnap.follower_count;
+              accountsWithGrowthHistory++;
+            }
           }
         }
       });
@@ -256,19 +271,23 @@ export default function SocialEconomyPage() {
         statusNote = 'No accounts linked';
       } else if (!hasCurrentFollowers) {
         statusNote = 'No follower counts entered';
-      } else if (baselineAccountsFound === 0) {
+      } else if (accountsWithGrowthHistory === 0) {
         statusNote = 'Not enough history yet';
       } else {
-        netChange = currentTotal - baselineTotal;
-        if (baselineTotal > 0) {
-          pctChange = Number(((netChange / baselineTotal) * 100).toFixed(1));
+        netChange = matchedCurrentTotal - matchedBaselineTotal;
+        if (matchedBaselineTotal > 0) {
+          pctChange = Number(((netChange / matchedBaselineTotal) * 100).toFixed(1));
+        } else if (netChange > 0) {
+          pctChange = 100.0;
+        } else {
+          pctChange = 0.0;
         }
       }
 
       return {
         platform,
         accountsCount: platAccounts.length,
-        currentFollowers: hasCurrentFollowers ? currentTotal : null,
+        currentFollowers: hasCurrentFollowers ? overallCurrentTotal : null,
         netChange,
         pctChange,
         statusNote,

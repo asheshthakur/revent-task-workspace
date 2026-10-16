@@ -312,6 +312,27 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'Account ID is required.' }, { status: 400 });
     }
 
+    // Explicitly delete child follower snapshots, refresh jobs, metric snapshots, and unlink posts
+    await runQuery(
+      'DELETE FROM social_follower_snapshots WHERE social_account_id = ? AND organisation_id = ?',
+      [id, ctx.activeOrg.id]
+    );
+
+    await runQuery(
+      'DELETE FROM social_refresh_jobs WHERE social_account_id = ? AND organisation_id = ?',
+      [id, ctx.activeOrg.id]
+    );
+
+    await runQuery(
+      'DELETE FROM social_metric_snapshots WHERE social_account_id = ? AND organisation_id = ?',
+      [id, ctx.activeOrg.id]
+    );
+
+    await runQuery(
+      'UPDATE social_posts SET social_account_id = NULL WHERE social_account_id = ? AND organisation_id = ?',
+      [id, ctx.activeOrg.id]
+    );
+
     await runQuery(
       'DELETE FROM social_accounts WHERE id = ? AND organisation_id = ?',
       [id, ctx.activeOrg.id]
@@ -319,7 +340,7 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json({ success: true, message: 'Social account deleted successfully.' });
   } catch (err: any) {
-    console.error('Error in DELETE /api/marketing/social-economy/accounts:', err);
+    console.error('Error in DELETE /api/marketing/social-economy/accounts:', err?.message || err, err?.stack);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
